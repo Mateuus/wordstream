@@ -10,6 +10,7 @@ interface WordCount {
 
 interface SessionStats {
   sessionId: string;
+  publicId?: string;
   channel: string;
   platform: 'twitch' | 'kick';
   totalWords: number;
@@ -17,6 +18,8 @@ interface SessionStats {
   topWords: WordCount[];
   createdAt: Date;
   lastActivity: Date;
+  isActive?: boolean;
+  createdBy?: string;
 }
 
 interface ChatMessage {

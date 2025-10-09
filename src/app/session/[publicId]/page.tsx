@@ -3,30 +3,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSimpleSSE, SimpleSSEProvider } from '@/src/contexts/SimpleSSEContext';
 
-interface ChatPageProps {
-  params: Promise<{ channel: string }>;
+interface SessionPageProps {
+  params: Promise<{ publicId: string }>;
 }
 
-export default function ChatPage({ params }: ChatPageProps) {
+export default function SessionPage({ params }: SessionPageProps) {
   return (
     <SimpleSSEProvider>
-      <ChatPageContent params={params} />
+      <SessionPageContent params={params} />
     </SimpleSSEProvider>
   );
 }
 
-function ChatPageContent({ params }: ChatPageProps) {
-  const [channel, setChannel] = useState<string>('');
-  const [inputChannel, setInputChannel] = useState<string>('');
-  const [platform, setPlatform] = useState<'twitch' | 'kick'>('twitch');
-  const [showChat, setShowChat] = useState<boolean>(true);
+function SessionPageContent({ params }: SessionPageProps) {
+  const [publicId, setPublicId] = useState<string>('');
+  const [sessionData, setSessionData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showConfigModal, setShowConfigModal] = useState(false);
   
   const {
     sessionStats,
     isConnected,
-    isLoading,
     messages,
-    sessionId,
     connectToChannel,
     clearSession,
     clearMessages
@@ -35,14 +34,40 @@ function ChatPageContent({ params }: ChatPageProps) {
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    params.then(({ channel }) => setChannel(channel));
+    params.then(({ publicId }) => setPublicId(publicId));
   }, [params]);
+
+  // Carregar dados da sessão
+  useEffect(() => {
+    if (!publicId) return;
+
+    const loadSession = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/session/${publicId}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setSessionData(data);
+          setError(null);
+        } else {
+          const errorData = await response.json();
+          setError(errorData.error || 'Sessão não encontrada');
+        }
+      } catch (err) {
+        setError('Erro ao carregar sessão');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSession();
+  }, [publicId]);
 
   // Auto-scroll para a última mensagem apenas dentro do container do chat
   useEffect(() => {
     if (chatContainerRef.current && messages.length > 0) {
       setTimeout(() => {
-        // Scroll apenas dentro do container do chat, não na página inteira
         chatContainerRef.current?.scrollTo({
           top: chatContainerRef.current.scrollHeight,
           behavior: 'smooth'
@@ -52,18 +77,45 @@ function ChatPageContent({ params }: ChatPageProps) {
   }, [messages]);
 
   const handleConnect = async () => {
-    if (!inputChannel.trim()) return;
-    await connectToChannel(inputChannel.trim(), platform);
+    if (!sessionData) return;
+    await connectToChannel(sessionData.channel, sessionData.platform);
   };
 
+  const handleDisconnect = async () => {
+    // Implementar desconexão se necessário
+    console.log('Desconectar da sessão');
+  };
 
   // Loading state
-  if (!channel) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Carregando...</p>
+          <p className="text-gray-400">Carregando sessão...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="text-6xl mb-6">❌</div>
+          <h1 className="text-3xl font-bold mb-4">
+            Sessão não encontrada
+          </h1>
+          <p className="text-gray-400 mb-6">
+            {error}
+          </p>
+          <a
+            href="/"
+            className="inline-block bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg transition-colors"
+          >
+            ← Voltar ao início
+          </a>
         </div>
       </div>
     );
@@ -84,22 +136,20 @@ function ChatPageContent({ params }: ChatPageProps) {
                 </span>
               </div>
               <button
-                onClick={() => setShowChat(!showChat)}
+                onClick={() => setShowConfigModal(true)}
                 className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
               >
-                {showChat ? '📊 Só Contador' : '💬 Ver Chat'}
+                ⚙️ Config
               </button>
             </div>
             <h1 className="text-lg font-bold mb-2">
-              WordStream - {channel}
+              WordStream - {sessionData?.channel}
             </h1>
-            {sessionId && (
-              <div className="glass rounded-lg px-2 py-1 mb-3">
-                <span className="text-xs text-gray-300">
-                  Sessão: <span className="font-mono text-blue-400">{sessionId.slice(-8)}...</span>
-                </span>
-              </div>
-            )}
+            <div className="glass rounded-lg px-2 py-1 mb-3">
+              <span className="text-xs text-gray-300">
+                Sessão: <span className="font-mono text-blue-400">{publicId}</span>
+              </span>
+            </div>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={clearMessages}
@@ -112,16 +162,6 @@ function ChatPageContent({ params }: ChatPageProps) {
                 className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs transition-colors"
               >
                 Limpar Contador
-              </button>
-              <button
-                onClick={() => {
-                  const obsUrl = `${window.location.origin}/chat/${channel}`;
-                  navigator.clipboard.writeText(obsUrl);
-                  alert('Link copiado para OBS!');
-                }}
-                className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs transition-colors"
-              >
-                📺 OBS
               </button>
             </div>
           </div>
@@ -136,18 +176,22 @@ function ChatPageContent({ params }: ChatPageProps) {
                 </span>
               </div>
               <h1 className="text-xl font-bold">
-                WordStream Chat - {channel}
+                WordStream - {sessionData?.channel}
               </h1>
-              {sessionId && (
-                <div className="glass rounded-lg px-3 py-1">
-                  <span className="text-sm text-gray-300">
-                    Sessão: <span className="font-mono text-blue-400">{sessionId.slice(-8)}...</span>
-                  </span>
-                </div>
-              )}
+              <div className="glass rounded-lg px-3 py-1">
+                <span className="text-sm text-gray-300">
+                  Sessão: <span className="font-mono text-blue-400">{publicId}</span>
+                </span>
+              </div>
             </div>
             
             <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowConfigModal(true)}
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
+              >
+                ⚙️ Configurações
+              </button>
               <button
                 onClick={clearMessages}
                 className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm transition-colors"
@@ -160,16 +204,6 @@ function ChatPageContent({ params }: ChatPageProps) {
               >
                 Limpar Contador
               </button>
-              <button
-                onClick={() => {
-                  const obsUrl = `${window.location.origin}/chat/${channel}`;
-                  navigator.clipboard.writeText(obsUrl);
-                  alert('Link copiado para OBS! Cole no navegador do OBS.');
-                }}
-                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded text-sm transition-colors"
-              >
-                📺 Link OBS
-              </button>
             </div>
           </div>
         </div>
@@ -179,30 +213,22 @@ function ChatPageContent({ params }: ChatPageProps) {
       {!isConnected && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="glass rounded-2xl p-4 sm:p-6 mb-6">
-            <h3 className="text-lg font-bold text-white mb-4">Conectar ao Canal</h3>
+            <h3 className="text-lg font-bold text-white mb-4">Conectar à Sessão</h3>
             <div className="flex flex-col sm:flex-row gap-3">
-              <select
-                value={platform}
-                onChange={(e) => setPlatform(e.target.value as 'twitch' | 'kick')}
-                className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white"
-              >
-                <option value="twitch">Twitch</option>
-                <option value="kick">Kick</option>
-              </select>
-              <input
-                type="text"
-                value={inputChannel}
-                onChange={(e) => setInputChannel(e.target.value)}
-                placeholder="Nome do canal"
-                className="flex-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400"
-                onKeyPress={(e) => e.key === 'Enter' && handleConnect()}
-              />
+              <div className="flex-1">
+                <p className="text-gray-300 text-sm mb-2">
+                  Canal: <span className="font-semibold text-blue-400">{sessionData?.channel}</span>
+                </p>
+                <p className="text-gray-300 text-sm mb-4">
+                  Plataforma: <span className="font-semibold text-green-400">{sessionData?.platform}</span>
+                </p>
+              </div>
               <button
                 onClick={handleConnect}
-                disabled={isLoading || !inputChannel.trim()}
+                disabled={!sessionData}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-white font-semibold transition-colors"
               >
-                {isLoading ? 'Conectando...' : 'Conectar'}
+                Conectar ao Chat
               </button>
             </div>
           </div>
@@ -216,74 +242,72 @@ function ChatPageContent({ params }: ChatPageProps) {
           <div className="space-y-4" style={{ minHeight: 'calc(100vh - 300px)' }}>
             
             {/* Chat Area - Mobile */}
-            {showChat && (
-              <div className="glass rounded-2xl border border-white border-opacity-20">
-                <div className="flex flex-col">
-                  {/* Header do Chat */}
-                  <div className="bg-white bg-opacity-10 px-4 py-3 border-b border-white border-opacity-20">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-white font-medium text-sm">
-                        Chat - {channel}
-                      </h3>
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                        <span className="text-xs text-gray-300">
-                          {isConnected ? 'AO VIVO' : 'OFF'}
-                        </span>
-                      </div>
+            <div className="glass rounded-2xl border border-white border-opacity-20">
+              <div className="flex flex-col">
+                {/* Header do Chat */}
+                <div className="bg-white bg-opacity-10 px-4 py-3 border-b border-white border-opacity-20">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-white font-medium text-sm">
+                      Chat - {sessionData?.channel}
+                    </h3>
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                      <span className="text-xs text-gray-300">
+                        {isConnected ? 'AO VIVO' : 'OFF'}
+                      </span>
                     </div>
                   </div>
-                  
-                  {/* Container das Mensagens */}
-                  <div 
-                    ref={chatContainerRef}
-                    className="overflow-y-auto p-3"
-                    style={{ 
-                      height: '300px',
-                      maxHeight: '300px'
-                    }}
-                  >
-                    {messages.length === 0 ? (
-                      <div className="flex items-center justify-center h-full text-gray-400">
-                        <div className="text-center">
-                          <div className="text-3xl mb-3">💬</div>
-                          <p className="text-sm font-medium mb-1">
-                            {isConnected ? 'Aguardando mensagens...' : 'Conecte-se ao canal'}
-                          </p>
-                          <p className="text-xs">
-                            {isConnected 
-                              ? 'Mensagens aparecerão aqui'
-                              : 'Digite o nome do canal'
+                </div>
+                
+                {/* Container das Mensagens */}
+                <div 
+                  ref={chatContainerRef}
+                  className="overflow-y-auto p-3"
+                  style={{ 
+                    height: '300px',
+                    maxHeight: '300px'
+                  }}
+                >
+                  {messages.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-gray-400">
+                      <div className="text-center">
+                        <div className="text-3xl mb-3">💬</div>
+                        <p className="text-sm font-medium mb-1">
+                          {isConnected ? 'Aguardando mensagens...' : 'Conecte-se ao chat'}
+                        </p>
+                        <p className="text-xs">
+                          {isConnected 
+                            ? 'Mensagens aparecerão aqui'
+                            : 'Clique em "Conectar ao Chat"'
                             }
-                          </p>
-                        </div>
+                        </p>
                       </div>
-                    ) : (
-                      <div className="space-y-1">
-                        {messages.map((message, index) => (
-                          <div key={message.id || index} className="w-full">
-                            <div className="flex items-start space-x-2 p-2 hover:bg-white hover:bg-opacity-5 rounded-lg transition-colors">
-                              <span className="text-blue-400 font-semibold text-xs">
-                                {message.username}:
-                              </span>
-                              <span className="text-gray-200 text-xs flex-1">
-                                {message.message}
-                              </span>
-                              <span className="text-gray-500 text-xs">
-                                {new Date(message.timestamp).toLocaleTimeString('pt-BR', {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                            </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {messages.map((message, index) => (
+                        <div key={message.id || index} className="w-full">
+                          <div className="flex items-start space-x-2 p-2 hover:bg-white hover:bg-opacity-5 rounded-lg transition-colors">
+                            <span className="text-blue-400 font-semibold text-xs">
+                              {message.username}:
+                            </span>
+                            <span className="text-gray-200 text-xs flex-1">
+                              {message.message}
+                            </span>
+                            <span className="text-gray-500 text-xs">
+                              {new Date(message.timestamp).toLocaleTimeString('pt-BR', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Word Counter - Mobile */}
             <div className="glass rounded-2xl p-4">
@@ -372,8 +396,8 @@ function ChatPageContent({ params }: ChatPageProps) {
                 {/* Header do Chat */}
                 <div className="bg-white bg-opacity-10 px-4 py-3 border-b border-white border-opacity-20">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-black font-medium">
-                      Chat em Tempo Real - {channel}
+                    <h3 className="text-white font-medium">
+                      Chat em Tempo Real - {sessionData?.channel}
                     </h3>
                     <div className="flex items-center space-x-2">
                       <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
@@ -398,12 +422,12 @@ function ChatPageContent({ params }: ChatPageProps) {
                       <div className="text-center">
                         <div className="text-4xl mb-4">💬</div>
                         <p className="text-lg font-medium mb-2">
-                          {isConnected ? 'Aguardando mensagens...' : 'Conecte-se ao canal para começar'}
+                          {isConnected ? 'Aguardando mensagens...' : 'Conecte-se ao chat para começar'}
                         </p>
                         <p className="text-sm">
                           {isConnected 
                             ? 'As mensagens do chat aparecerão aqui em tempo real'
-                            : 'Digite o nome do canal acima para conectar'
+                            : 'Clique em "Conectar ao Chat" para começar'
                           }
                         </p>
                       </div>
@@ -517,7 +541,7 @@ function ChatPageContent({ params }: ChatPageProps) {
       {/* Footer */}
       <div className="glass border-t border-white border-opacity-20 px-4 sm:px-6 py-3">
         <div className="max-w-7xl mx-auto text-center text-xs sm:text-sm text-gray-400">
-          <p>🏆 WordStream Chat | Canal: {channel}</p>
+          <p>🏆 WordStream | Sessão: {publicId} | Canal: {sessionData?.channel}</p>
         </div>
       </div>
     </div>

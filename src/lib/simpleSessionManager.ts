@@ -6,12 +6,15 @@ interface WordCount {
 
 interface SessionData {
   id: string;
+  publicId: string; // ID público para compartilhar
   channel: string;
   platform: 'twitch' | 'kick';
   wordCounts: Map<string, WordCount>;
   totalWords: number;
   createdAt: Date;
   lastActivity: Date;
+  isActive: boolean;
+  createdBy: string; // Quem criou a sessão
 }
 
 export class SimpleSessionManager {
@@ -25,27 +28,44 @@ export class SimpleSessionManager {
     return SimpleSessionManager.instance;
   }
 
-  createSession(channel: string, platform: 'twitch' | 'kick' = 'twitch'): string {
+  createSession(channel: string, platform: 'twitch' | 'kick' = 'twitch', createdBy: string = 'admin'): { sessionId: string; publicId: string } {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const publicId = Math.random().toString(36).substr(2, 8).toUpperCase(); // ID público curto
     
     const sessionData: SessionData = {
       id: sessionId,
+      publicId,
       channel,
       platform,
       wordCounts: new Map(),
       totalWords: 0,
       createdAt: new Date(),
-      lastActivity: new Date()
+      lastActivity: new Date(),
+      isActive: true,
+      createdBy
     };
 
     this.sessions.set(sessionId, sessionData);
-    console.log(`📝 Sessão criada: ${sessionId} para canal ${channel}`);
+    console.log(`📝 Sessão criada: ${sessionId} (Público: ${publicId}) para canal ${channel}`);
     
-    return sessionId;
+    return { sessionId, publicId };
   }
 
   getSession(sessionId: string): SessionData | null {
     return this.sessions.get(sessionId) || null;
+  }
+
+  getSessionByPublicId(publicId: string): SessionData | null {
+    for (const session of this.sessions.values()) {
+      if (session.publicId === publicId && session.isActive) {
+        return session;
+      }
+    }
+    return null;
+  }
+
+  getAllActiveSessions(): SessionData[] {
+    return Array.from(this.sessions.values()).filter(session => session.isActive);
   }
 
   processWord(sessionId: string, word: string): void {
@@ -89,13 +109,16 @@ export class SimpleSessionManager {
 
     return {
       sessionId: session.id,
+      publicId: session.publicId,
       channel: session.channel,
       platform: session.platform,
       totalWords: session.totalWords,
       uniqueWords: session.wordCounts.size,
       topWords: this.getTopWords(sessionId, 10),
       createdAt: session.createdAt,
-      lastActivity: session.lastActivity
+      lastActivity: session.lastActivity,
+      isActive: session.isActive,
+      createdBy: session.createdBy
     };
   }
 

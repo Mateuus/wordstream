@@ -9,17 +9,19 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "autoprefixer": "^10.4.21",
     "nanoid": "^5.1.6",
     "next": "15.5.4",
     "node-fetch": "^3.3.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "redis": "^5.8.3",
     "tmi.js": "^1.8.5",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.1.14",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

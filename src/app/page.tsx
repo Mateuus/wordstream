@@ -1,20 +1,88 @@
 'use client';
 
 import { useState } from 'react';
-import { SimpleSSEProvider } from '@/src/contexts/SimpleSSEContext';
+import Link from 'next/link';
 
 export default function Home() {
   const [channel, setChannel] = useState<string>('');
   const [platform, setPlatform] = useState<'twitch' | 'kick'>('twitch');
+  const [password, setPassword] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<{error?: string; message?: string; shareUrl?: string} | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [restorePublicId, setRestorePublicId] = useState<string>('');
+  const [restorePassword, setRestorePassword] = useState<string>('');
 
-  const handleGoToChat = () => {
+  const handleCreateSession = async () => {
     if (!channel.trim()) return;
-    window.location.href = `/chat/${channel.trim()}`;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/admin/sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          channel: channel.trim(),
+          platform,
+          createdBy: 'admin',
+          password: password.trim() || undefined
+        }),
+      });
+
+      const data = await response.json();
+      setResult(data);
+      
+      if (response.ok) {
+        // Redirecionar para a sessão criada
+        window.location.href = data.shareUrl;
+      }
+    } catch {
+      setResult({ error: 'Erro ao criar sessão' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoToSession = () => {
+    if (!channel.trim()) return;
+    window.location.href = `/session/${channel.trim()}`;
+  };
+
+  const handleRestoreSession = async () => {
+    if (!restorePublicId.trim() || !restorePassword.trim()) return;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/admin/restore', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          publicId: restorePublicId.trim(),
+          password: restorePassword.trim()
+        }),
+      });
+
+      const data = await response.json();
+      setResult(data);
+      
+      if (response.ok) {
+        // Redirecionar para a sessão restaurada
+        window.location.href = data.session.shareUrl;
+      }
+    } catch {
+      setResult({ error: 'Erro ao restaurar sessão' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <SimpleSSEProvider>
-      <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden">
         {/* Background dinâmico com múltiplas camadas */}
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900"></div>
         
@@ -44,6 +112,7 @@ export default function Home() {
                 </h1>
               </div>
               <div className="flex items-center space-x-4">
+                <Link href="/admin" className="text-gray-300 hover:text-white transition-colors">🛠️ Admin</Link>
                 <button className="text-gray-300 hover:text-white transition-colors">Sobre</button>
                 <button className="text-gray-300 hover:text-white transition-colors">Recursos</button>
                 <button className="text-gray-300 hover:text-white transition-colors">Contato</button>
@@ -101,14 +170,34 @@ export default function Home() {
                       onChange={(e) => setChannel(e.target.value)}
                       placeholder={`Nome do canal no ${platform === 'twitch' ? 'Twitch' : 'Kick'}`}
                       className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-center"
-                      onKeyPress={(e) => e.key === 'Enter' && handleGoToChat()}
+                      onKeyPress={(e) => e.key === 'Enter' && handleGoToSession()}
                     />
                   </div>
                   
-                  {/* Botão Ir para Chat */}
-                  <div className="w-full">
+                  {/* Botões de Ação */}
+                  <div className="w-full space-y-3">
                     <button
-                      onClick={handleGoToChat}
+                      onClick={() => setShowModal(true)}
+                      className="w-full group relative overflow-hidden px-6 py-3 bg-blue-600 text-white font-semibold rounded-full border-0 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:scale-105 hover:-translate-y-1"
+                    >
+                      <span className="relative z-10 flex items-center justify-center space-x-2 text-base">
+                        <span className="text-lg">🆕</span>
+                        <span>Criar Nova Sessão</span>
+                      </span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowRestoreModal(true)}
+                      className="w-full group relative overflow-hidden px-6 py-3 bg-green-600 text-white font-semibold rounded-full border-0 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:scale-105 hover:-translate-y-1"
+                    >
+                      <span className="relative z-10 flex items-center justify-center space-x-2 text-base">
+                        <span className="text-lg">🔄</span>
+                        <span>Restaurar Sessão</span>
+                      </span>
+                    </button>
+                    
+                    <button
+                      onClick={handleGoToSession}
                       disabled={!channel.trim()}
                       className="w-full group relative overflow-hidden px-6 py-3 bg-white text-black font-semibold rounded-full border-0 shadow-lg hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-500 transform hover:scale-105 hover:-translate-y-1"
                     >
@@ -117,7 +206,7 @@ export default function Home() {
                       
                       <span className="relative z-10 flex items-center justify-center space-x-2 text-base">
                         <span className="text-lg">🚀</span>
-                        <span>Ir para Chat</span>
+                        <span>Entrar em Sessão</span>
                       </span>
                     </button>
                   </div>
@@ -183,7 +272,142 @@ export default function Home() {
             </div>
           </footer>
         </div>
-      </div>
-    </SimpleSSEProvider>
+
+        {/* Modal de Nova Sessão */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Nova Sessão</h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Canal</label>
+                <input
+                  type="text"
+                  value={channel}
+                  onChange={(e) => setChannel(e.target.value)}
+                  placeholder="Nome do canal"
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Plataforma</label>
+                <select
+                  value={platform}
+                  onChange={(e) => setPlatform(e.target.value as 'twitch' | 'kick')}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="twitch">🎮 Twitch</option>
+                  <option value="kick">⚡ Kick</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Senha (Opcional)</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Senha para proteger a sessão"
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {result && (
+                <div className={`p-3 rounded-lg ${result.error ? 'bg-red-900 text-red-200' : 'bg-green-900 text-green-200'}`}>
+                  {result.error ? (
+                    <p>❌ {result.error}</p>
+                  ) : (
+                    <p>✅ {result.message}</p>
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={handleCreateSession}
+                disabled={isLoading || !channel.trim()}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-lg font-semibold transition-colors"
+              >
+                {isLoading ? 'Criando...' : '🚀 Criar Sessão'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Restaurar Sessão */}
+      {showRestoreModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Restaurar Sessão</h2>
+              <button
+                onClick={() => setShowRestoreModal(false)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 bg-blue-900 bg-opacity-50 rounded-lg">
+              <p className="text-sm text-blue-200">
+                💡 Para restaurar uma sessão, você precisa do <strong>ID público</strong> e da <strong>senha</strong> que foram definidos na criação da sessão.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">ID Público da Sessão</label>
+                <input
+                  type="text"
+                  value={restorePublicId}
+                  onChange={(e) => setRestorePublicId(e.target.value)}
+                  placeholder="ID público da sessão"
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Senha da Sessão</label>
+                <input
+                  type="password"
+                  value={restorePassword}
+                  onChange={(e) => setRestorePassword(e.target.value)}
+                  placeholder="Senha definida na criação da sessão"
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+
+              {result && (
+                <div className={`p-3 rounded-lg ${result.error ? 'bg-red-900 text-red-200' : 'bg-green-900 text-green-200'}`}>
+                  {result.error ? (
+                    <p>❌ {result.error}</p>
+                  ) : (
+                    <p>✅ {result.message}</p>
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={handleRestoreSession}
+                disabled={isLoading || !restorePublicId.trim() || !restorePassword.trim()}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-lg font-semibold transition-colors"
+              >
+                {isLoading ? 'Restaurando...' : '🔄 Restaurar Sessão'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
