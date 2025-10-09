@@ -57,21 +57,21 @@ export default function Home() {
               {/* Logo principal com efeitos */}
               <div className="mb-12 animate-fade-in-scale">
                 <div className="relative inline-block">
-                  <div className="text-9xl mb-8 animate-float">🏆</div>
+                  <div className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl mb-8 animate-float">🏆</div>
                   {/* Efeito de brilho ao redor do emoji */}
-                  <div className="absolute inset-0 text-9xl animate-pulse opacity-30 blur-sm">🏆</div>
+                  <div className="absolute inset-0 text-6xl sm:text-7xl md:text-8xl lg:text-9xl animate-pulse opacity-30 blur-sm">🏆</div>
                 </div>
                 
-                <h1 className="text-7xl md:text-8xl font-bold text-white mb-6 text-shadow">
+                <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-6 text-shadow">
                   <span className="text-gradient bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
                     WordStream
                   </span>
                 </h1>
                 
-                <p className="text-2xl md:text-3xl text-gray-300 mb-4 leading-relaxed">
+                <p className="text-xl sm:text-2xl md:text-3xl text-gray-300 mb-4 leading-relaxed px-4">
                   Contador de palavras em tempo real
                 </p>
-                <p className="text-lg text-gray-400 mb-12 max-w-3xl mx-auto">
+                <p className="text-sm sm:text-base md:text-lg text-gray-400 mb-12 max-w-3xl mx-auto px-4">
                   Processamento centralizado no servidor com atualizações instantâneas via SSE. 
                   Conecte-se ao chat da Twitch ou Kick e veja as palavras mais mencionadas em tempo real.
                 </p>
@@ -79,14 +79,14 @@ export default function Home() {
 
               {/* Botões de ação principais */}
               <div className="mb-20 animate-slide-in-up">
-                <div className="flex flex-col lg:flex-row gap-6 items-center justify-center">
+                <div className="flex flex-col gap-4 items-center justify-center max-w-md mx-auto">
                   
                   {/* Seleção de Plataforma */}
-                  <div className="flex items-center space-x-3">
+                  <div className="w-full">
                     <select
                       value={platform}
                       onChange={(e) => setPlatform(e.target.value as 'twitch' | 'kick')}
-                      className="px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
                     >
                       <option value="twitch">🎮 Twitch</option>
                       <option value="kick">⚡ Kick</option>
@@ -94,24 +94,28 @@ export default function Home() {
                   </div>
                   
                   {/* Input do Canal */}
-                  <div className="flex items-center space-x-3">
+                  <div className="w-full">
                     <input
                       type="text"
                       value={channel}
                       onChange={(e) => setChannel(e.target.value)}
                       placeholder={`Nome do canal no ${platform === 'twitch' ? 'Twitch' : 'Kick'}`}
-                      className="px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all min-w-64"
+                      className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-center"
                       onKeyPress={(e) => e.key === 'Enter' && handleGoToChat()}
                     />
+                  </div>
+                  
+                  {/* Botão Ir para Chat */}
+                  <div className="w-full">
                     <button
                       onClick={handleGoToChat}
                       disabled={!channel.trim()}
-                      className="group relative overflow-hidden px-6 py-3 bg-white text-black font-semibold rounded-full border-0 shadow-lg hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-500 transform hover:scale-105 hover:-translate-y-1"
+                      className="w-full group relative overflow-hidden px-6 py-3 bg-white text-black font-semibold rounded-full border-0 shadow-lg hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-500 transform hover:scale-105 hover:-translate-y-1"
                     >
                       {/* Background animado */}
                       <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                       
-                      <span className="relative z-10 flex items-center space-x-2 text-base">
+                      <span className="relative z-10 flex items-center justify-center space-x-2 text-base">
                         <span className="text-lg">🚀</span>
                         <span>Ir para Chat</span>
                       </span>
