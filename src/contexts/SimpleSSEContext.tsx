@@ -399,6 +399,8 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
       
       if (response.ok) {
         console.log('🗑️ Contador limpo');
+        // Limpar também o winner quando limpar o contador
+        setWinner(null);
       } else {
         const error = await response.json();
         console.error('Erro ao limpar contador:', error.error);
