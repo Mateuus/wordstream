@@ -29,7 +29,7 @@ export class SimpleChatConnector {
     try {
       // SEMPRE usar a sessão existente fornecida
       if (!existingSessionId) {
-        throw new Error('SessionId é obrigatório para conectar ao chat');
+        throw new Error('SessionId é obrigatório para conectar ao chat: ' + _platform);
       }
       
       console.log(`🔗 Conectando chat à sessão existente: ${existingSessionId}`);

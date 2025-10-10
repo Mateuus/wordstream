@@ -48,6 +48,7 @@ function broadcastToLocalConnections(channel: string, data: unknown): void {
   connections.forEach(controller => {
     try {
       controller.enqueue(encodedMessage);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       // Conexão foi fechada, remover da lista
       const index = connections.indexOf(controller);
