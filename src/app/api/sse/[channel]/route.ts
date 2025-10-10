@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { registerConnection, unregisterConnection } from '@/src/lib/simpleSSEManager';
+import { registerSharedConnection, unregisterSharedConnection } from '@/src/lib/sharedSSEManager';
 import { RedisSessionManager } from '@/src/lib/redisSessionManager';
 
 export async function GET(
@@ -10,43 +10,39 @@ export async function GET(
   const { channel: publicId } = await params;
   const { searchParams } = new URL(request.url);
   const twitchChannel = searchParams.get('channel'); // Nome do canal Twitch (ex: fontinnelerj)
+  const isOverlay = searchParams.get('overlay') === 'true'; // Identificar se é overlay
 
   const stream = new ReadableStream({
     async start(controller) {
-      // Registrar conexão usando publicId como identificador único
-      registerConnection(publicId, controller);
-      console.log(`🔌 SSE registrado para publicId: ${publicId} (canal: ${twitchChannel || 'desconhecido'})`);
+      // Registrar conexão na sessão compartilhada
+      const clientType = isOverlay ? 'overlay' : 'session';
+      const clientId = registerSharedConnection(publicId, twitchChannel || 'desconhecido', controller, clientType);
+      console.log(`🔌 Cliente SSE ${clientId} conectado à sessão ${publicId} (tipo: ${clientType})`);
 
       // Enviar mensagem de conexão
       const connectMessage = `data: ${JSON.stringify({
         type: 'connected',
         publicId,
         channel: twitchChannel,
+        clientId,
+        clientType,
         timestamp: Date.now()
       })}\n\n`;
       
       controller.enqueue(new TextEncoder().encode(connectMessage));
 
-      // 🆕 Enviar dados iniciais da sessão
+      // 🆕 Enviar dados iniciais da sessão apenas para este cliente
       try {
         const sessionManager = RedisSessionManager.getInstance();
         const stats = await sessionManager.getSessionStats(publicId);
         
         if (stats) {
-          console.log(`📊 Enviando stats iniciais para publicId ${publicId}:`, {
-            totalWords: stats.totalWords,
-            uniqueWords: stats.uniqueWords,
-            topWords: stats.topWords.length
-          });
-          
           const statsMessage = `data: ${JSON.stringify({
             type: 'wordUpdate',
             stats: stats
           })}\n\n`;
           
           controller.enqueue(new TextEncoder().encode(statsMessage));
-        } else {
-          console.log(`ℹ️ Sessão ${publicId} não tem stats ainda`);
         }
       } catch (error) {
         console.error('❌ Erro ao buscar stats iniciais:', error);
@@ -68,8 +64,7 @@ export async function GET(
       // Cleanup quando conexão for fechada
       request.signal.addEventListener('abort', () => {
         clearInterval(heartbeat);
-        unregisterConnection(publicId, controller);
-        console.log(`🔌 SSE desconectado para publicId: ${publicId}`);
+        unregisterSharedConnection(publicId, clientId);
       });
     }
   });

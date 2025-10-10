@@ -56,7 +56,7 @@ function TimerOverlayPageContent({ params, searchParams }: TimerOverlayPageProps
           setSessionData(data);
           
           // Conectar ao chat automaticamente
-          await connectToChannel(data.channel, data.platform, data.sessionId);
+          await connectToChannel(data.channel, data.platform, data.sessionId, true);
         }
       } catch (error) {
         console.error('Erro ao carregar sessão:', error);

@@ -47,7 +47,7 @@ export async function POST(
       });
       
       // Enviar atualização via SSE
-      broadcastToChannel(sessionId, {
+      broadcastToSharedSession(sessionId, {
         type: 'bannedWordsUpdate',
         bannedWords
       });

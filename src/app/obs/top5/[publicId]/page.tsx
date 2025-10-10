@@ -44,8 +44,8 @@ function Top5OverlayPageContent({ params }: Top5OverlayPageProps) {
           const data = await response.json();
           setSessionData(data);
           
-          // Conectar ao chat automaticamente
-          await connectToChannel(data.channel, data.platform, data.sessionId);
+          // Conectar ao chat automaticamente (como overlay)
+          await connectToChannel(data.channel, data.platform, data.sessionId, true);
         }
       } catch (error) {
         console.error('Erro ao carregar sessão:', error);

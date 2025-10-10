@@ -20,8 +20,8 @@ export const ObsOverlayModal: React.FC<ObsOverlayModalProps> = ({
 
   // URLs dos overlays
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-  const top5Url = `${baseUrl}/obs/top5/${publicId}`;
-  const timerUrl = `${baseUrl}/obs/timer/${publicId}?duration=${timerDuration}`;
+  const top5Url = `${baseUrl}/obs/top5/${publicId}?overlay=true`;
+  const timerUrl = `${baseUrl}/obs/timer/${publicId}?overlay=true`;
 
   // Função para copiar URL
   const copyToClipboard = async (url: string, type: string) => {

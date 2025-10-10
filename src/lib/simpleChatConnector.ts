@@ -1,5 +1,5 @@
 import tmi from 'tmi.js';
-import { broadcastToChannel, getActiveConnectionsCount } from './simpleSSEManager';
+import { broadcastToSharedSession } from './sharedSSEManager';
 import { RedisSessionManager } from './redisSessionManager';
 
 interface ChatMessage {
@@ -43,7 +43,10 @@ export class SimpleChatConnector {
         throw new Error('SessionId é obrigatório para conectar ao chat: ' + _platform);
       }
       
-      console.log(`🔗 Conectando chat à sessão existente: ${existingSessionId}`);
+      // Verificar se já existe conexão para este sessionId
+      if (this.sessionToChannel.has(existingSessionId)) {
+        return existingSessionId;
+      }
       
       // 🔍 Buscar dados da sessão pelo publicId para obter o canal e plataforma corretos
       // Isso garante que usamos os dados da sessão criada, não os parâmetros
@@ -54,8 +57,6 @@ export class SimpleChatConnector {
       
       const actualChannel = session.channel;
       const actualPlatform = session.platform;
-      
-      console.log(`📺 Canal obtido da sessão: ${actualChannel} (plataforma: ${actualPlatform})`);
       
       if (actualPlatform === 'twitch') {
         await this.connectToTwitch(actualChannel, existingSessionId);
@@ -74,6 +75,13 @@ export class SimpleChatConnector {
 
   private async connectToTwitch(channel: string, sessionId: string): Promise<void> {
     try {
+      // Verificar se já existe conexão para este canal
+      if (this.connections.has(channel)) {
+        // Mapear sessionId -> channelName mesmo se já existe conexão
+        this.sessionToChannel.set(sessionId, channel);
+        return;
+      }
+      
       const client = new tmi.Client({
         options: { debug: false },
         connection: {
@@ -103,8 +111,8 @@ export class SimpleChatConnector {
       client.on('connected', () => {
         console.log(`✅ Conectado ao canal Twitch: ${channel}`);
         
-        // 🔑 Enviar status de conexão via SSE usando sessionId (publicId)
-        broadcastToChannel(sessionId, {
+        // 🔑 Enviar status de conexão via SSE compartilhado usando sessionId (publicId)
+        broadcastToSharedSession(sessionId, {
           type: 'connectionStatus',
           status: { isConnected: true, channel, platform: 'twitch' }
         });
@@ -113,8 +121,8 @@ export class SimpleChatConnector {
       client.on('disconnected', (reason: string) => {
         console.log(`❌ Desconectado do canal Twitch: ${channel}`, reason);
         
-        // 🔑 Enviar status de desconexão via SSE usando sessionId (publicId)
-        broadcastToChannel(sessionId, {
+        // 🔑 Enviar status de desconexão via SSE compartilhado usando sessionId (publicId)
+        broadcastToSharedSession(sessionId, {
           type: 'connectionStatus',
           status: { isConnected: false, channel, platform: 'twitch' }
         });
@@ -126,7 +134,6 @@ export class SimpleChatConnector {
       await client.connect();
       this.connections.set(channel, client);
       this.sessionToChannel.set(sessionId, channel); // Mapear sessionId -> channelName
-      console.log(`🔗 Mapeamento criado: sessionId ${sessionId} -> canal ${channel}`);
 
     } catch (error) {
       console.error('Erro ao conectar ao Twitch:', error);
@@ -136,9 +143,8 @@ export class SimpleChatConnector {
 
   private async processMessage(sessionId: string, message: ChatMessage): Promise<void> {
     try {
-      // 🔑 SEMPRE enviar via SSE - o broadcast vai falhar silenciosamente se não houver conexões
-      // Isso resolve o problema de serverless onde o Map de conexões não é compartilhado entre processos
-      broadcastToChannel(sessionId, {
+      // Enviar via SSE compartilhado
+      broadcastToSharedSession(sessionId, {
         type: 'chatMessage',
         message: message
       });
@@ -148,10 +154,10 @@ export class SimpleChatConnector {
       if (firstWord) {
         await this.sessionManager.processWord(sessionId, firstWord);
         
-        // Enviar atualização de palavras via SSE usando sessionId (publicId)
+        // Enviar atualização de palavras via SSE compartilhado usando sessionId (publicId)
         const stats = await this.sessionManager.getSessionStats(sessionId);
         if (stats) {
-          broadcastToChannel(sessionId, {
+          broadcastToSharedSession(sessionId, {
             type: 'wordUpdate',
             stats: stats
           });
@@ -250,14 +256,8 @@ export class SimpleChatConnector {
       }
 
       if (sessionId) {
-        const activeConnections = getActiveConnectionsCount(sessionId);
-        
-        if (activeConnections === 0) {
-          console.log(`💤 Canal ${channel} (sessionId: ${sessionId}) sem conexões SSE ativas`);
-          channelsToDisconnect.push(channel);
-        } else {
-          console.log(`✅ Canal ${channel} (sessionId: ${sessionId}) tem ${activeConnections} conexões SSE ativas`);
-        }
+        // Verificar se há conexões SSE ativas para esta sessão
+        // Como agora usamos sessões compartilhadas, não precisamos mais verificar conexões individuais
       }
     }
 
@@ -328,14 +328,7 @@ export class SimpleChatConnector {
     const channelsToDisconnect: string[] = [];
 
     // Verificar cada sessionId para ver se tem conexões SSE ativas
-    for (const [sessionId, channelName] of this.sessionToChannel.entries()) {
-      const activeConnections = getActiveConnectionsCount(sessionId);
-      
-      if (activeConnections === 0) {
-        channelsToDisconnect.push(channelName);
-        this.sessionToChannel.delete(sessionId); // Remover mapeamento
-      }
-    }
+    // Como agora usamos sessões compartilhadas, não precisamos mais verificar conexões individuais
 
     // Desconectar canais inativos
     for (const channel of channelsToDisconnect) {
@@ -374,8 +367,8 @@ export class SimpleChatConnector {
     if (currentAttempts >= this.maxReconnectAttempts) {
       console.log(`🚫 Máximo de tentativas de reconexão atingido para o canal: ${channel}`);
       
-      // Notificar falha definitiva via SSE
-      broadcastToChannel(sessionId, {
+      // Notificar falha definitiva via SSE compartilhado
+      broadcastToSharedSession(sessionId, {
         type: 'connectionStatus',
         status: { 
           isConnected: false, 
@@ -397,8 +390,8 @@ export class SimpleChatConnector {
 
     console.log(`🔄 Agendando reconexão para ${channel} em ${delay}ms (tentativa ${currentAttempts + 1}/${this.maxReconnectAttempts})`);
 
-    // Notificar tentativa de reconexão via SSE
-    broadcastToChannel(sessionId, {
+    // Notificar tentativa de reconexão via SSE compartilhado
+    broadcastToSharedSession(sessionId, {
       type: 'connectionStatus',
       status: { 
         isConnected: false, 

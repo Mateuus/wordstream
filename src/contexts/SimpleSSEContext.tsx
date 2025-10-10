@@ -73,7 +73,7 @@ interface SimpleSSEContextType {
   settings: {
     wordLimit: number;
   };
-  connectToChannel: (channel: string, platform?: 'twitch' | 'kick', existingSessionId?: string) => Promise<void>;
+  connectToChannel: (channel: string, platform?: 'twitch' | 'kick', existingSessionId?: string, isOverlay?: boolean) => Promise<void>;
   clearSession: () => Promise<void>;
   clearMessages: () => void;
   banWord: (word: string) => Promise<void>;
@@ -169,7 +169,7 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
     }
   }, []);
 
-  const connectToChannel = useCallback(async (channel: string, platform: 'twitch' | 'kick' = 'twitch', existingSessionId?: string) => {
+  const connectToChannel = useCallback(async (channel: string, platform: 'twitch' | 'kick' = 'twitch', existingSessionId?: string, isOverlay: boolean = false) => {
     setIsLoading(true);
     try {
       // 🆕 Primeiro: Conectar ao SSE ANTES de conectar o chat
@@ -181,11 +181,11 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
       // 🔑 Usar publicId (sessionId) como chave do SSE, não o nome do canal
       // Isso garante que cada sessão tenha seu próprio canal SSE único
       const sseChannel = existingSessionId || channel; // Usar sessionId como canal SSE
+      const overlayParam = isOverlay ? '&overlay=true' : '';
       const sseUrl = existingSessionId 
-        ? `/api/sse/${sseChannel}?channel=${channel}`
-        : `/api/sse/${channel}`;
+        ? `/api/sse/${sseChannel}?channel=${channel}${overlayParam}`
+        : `/api/sse/${channel}${overlayParam}`;
       
-      console.log(`🔌 Conectando SSE ao canal: ${sseChannel} (chat: ${channel})`);
       const eventSource = new EventSource(sseUrl);
       eventSourceRef.current = eventSource;
 
