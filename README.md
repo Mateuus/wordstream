@@ -2,7 +2,7 @@
 
 WordStream é um aplicativo de streaming de palavras em tempo real construído com Next.js e configurado como Progressive Web App (PWA).
 
-🌐 **Site em Produção**: [http://contador.bdjcoins.com/](http://contador.bdjcoins.com/)
+🌐 **Site em Produção**: [https://wordstream.bdjcoins.com/](https://wordstream.bdjcoins.com/)
 
 ## 🚀 Funcionalidades
 
@@ -125,13 +125,13 @@ Principais configurações:
 NODE_ENV=production
 PORT=3500
 REDIS_URL=redis://192.168.5.210:6379
-NEXT_PUBLIC_APP_URL=http://contador.bdjcoins.com
-NEXT_PUBLIC_BASE_URL=http://contador.bdjcoins.com
+NEXT_PUBLIC_APP_URL=https://wordstream.bdjcoins.com
+NEXT_PUBLIC_BASE_URL=https://wordstream.bdjcoins.com
 ```
 
 **URLs por Ambiente:**
 - **Desenvolvimento**: `http://localhost:3000`
-- **Produção**: `http://contador.bdjcoins.com` (porta 3500)
+- **Produção**: `https://wordstream.bdjcoins.com` (porta 3500)
 - **Staging**: `http://localhost:3001`
 
 ### PM2 Ecosystem

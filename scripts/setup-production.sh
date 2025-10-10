@@ -32,8 +32,8 @@ fi
 echo -e "\n${YELLOW}🔍 Verificando configurações de produção...${NC}"
 
 # Verificar se contém o domínio correto
-if grep -q "contador.bdjcoins.com" .env.production; then
-    echo -e "${GREEN}✅ Domínio de produção configurado: contador.bdjcoins.com${NC}"
+if grep -q "wordstream.bdjcoins.com" .env.production; then
+    echo -e "${GREEN}✅ Domínio de produção configurado: wordstream.bdjcoins.com${NC}"
 else
     echo -e "${RED}❌ Domínio de produção não encontrado no .env.production${NC}"
 fi
@@ -125,7 +125,7 @@ echo "  npm run pm2:logs          - Ver logs"
 echo "  npm run pm2:monit         - Monitoramento em tempo real"
 echo ""
 echo -e "${YELLOW}🌐 Acesse o aplicativo em:${NC}"
-echo "  http://contador.bdjcoins.com"
+echo "  https://wordstream.bdjcoins.com"
 echo ""
 echo -e "${YELLOW}📊 Para monitorar, execute:${NC}"
 echo "  ./scripts/monitor.sh"

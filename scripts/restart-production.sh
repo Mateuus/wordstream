@@ -80,7 +80,7 @@ pm2 status wordstream-pwa
 # Verificar se está rodando
 if pm2 list | grep -q "wordstream-pwa.*online"; then
     echo -e "\n${GREEN}🎉 WordStream PWA está rodando em produção!${NC}"
-    echo -e "${YELLOW}🌐 Acesse: http://contador.bdjcoins.com${NC}"
+    echo -e "${YELLOW}🌐 Acesse: https://wordstream.bdjcoins.com${NC}"
     echo -e "${YELLOW}📊 Monitor: npm run pm2:monit${NC}"
     echo -e "${YELLOW}📝 Logs: npm run pm2:logs${NC}"
 else

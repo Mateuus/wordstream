@@ -80,11 +80,11 @@ fi
 echo -e "\n${YELLOW}🌐 Acessibilidade do PWA:${NC}"
 if command -v curl >/dev/null 2>&1; then
     # Verificar domínio de produção
-    HTTP_STATUS_PROD=$(curl -s -o /dev/null -w "%{http_code}" http://contador.bdjcoins.com 2>/dev/null)
+    HTTP_STATUS_PROD=$(curl -s -o /dev/null -w "%{http_code}" https://wordstream.bdjcoins.com 2>/dev/null)
     if [ "$HTTP_STATUS_PROD" = "200" ]; then
-        echo -e "${GREEN}✅ PWA acessível em produção (HTTP $HTTP_STATUS_PROD) - contador.bdjcoins.com${NC}"
+        echo -e "${GREEN}✅ PWA acessível em produção (HTTP $HTTP_STATUS_PROD) - wordstream.bdjcoins.com${NC}"
     else
-        echo -e "${RED}❌ PWA não acessível em produção (HTTP $HTTP_STATUS_PROD) - contador.bdjcoins.com${NC}"
+        echo -e "${RED}❌ PWA não acessível em produção (HTTP $HTTP_STATUS_PROD) - wordstream.bdjcoins.com${NC}"
     fi
     
     # Verificar porta de desenvolvimento (3000)

@@ -2,12 +2,12 @@
   "name": "WordStream",
   "short_name": "WordStream",
   "description": "Aplicativo de streaming de palavras em tempo real",
-  "start_url": "http://contador.bdjcoins.com/",
+  "start_url": "https://wordstream.bdjcoins.com/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "orientation": "portrait-primary",
-  "scope": "http://contador.bdjcoins.com/",
+  "scope": "https://wordstream.bdjcoins.com/",
   "lang": "pt-BR",
   "categories": ["entertainment", "social"],
   "icons": [
@@ -79,7 +79,7 @@
       "name": "Chat",
       "short_name": "Chat",
       "description": "Acessar o chat principal",
-      "url": "http://contador.bdjcoins.com/chat",
+      "url": "https://wordstream.bdjcoins.com/chat",
       "icons": [
         {
           "src": "/icons/icon-96x96.png",
@@ -91,7 +91,7 @@
       "name": "Admin",
       "short_name": "Admin",
       "description": "Painel administrativo",
-      "url": "http://contador.bdjcoins.com/admin",
+      "url": "https://wordstream.bdjcoins.com/admin",
       "icons": [
         {
           "src": "/icons/icon-96x96.png",

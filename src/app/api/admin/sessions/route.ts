@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
       adminKey,
       channel,
       platform,
-      shareUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://contador.bdjcoins.com'}/session/${publicId}`,
-      adminUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://contador.bdjcoins.com'}/session/${publicId}?admin=${adminKey}`,
+      shareUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://wordstream.bdjcoins.com'}/session/${publicId}`,
+      adminUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://wordstream.bdjcoins.com'}/session/${publicId}?admin=${adminKey}`,
       message: `Sessão compartilhada criada: ${publicId}`
     });
 
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         createdAt: session.createdAt,
         lastActivity: session.lastActivity,
         createdBy: session.createdBy,
-        shareUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://contador.bdjcoins.com'}/session/${session.publicId}`
+        shareUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://wordstream.bdjcoins.com'}/session/${session.publicId}`
       }))
     });
 
