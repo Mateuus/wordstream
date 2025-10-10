@@ -459,7 +459,7 @@ export class RedisSessionManager {
     const bannedWords = session.bannedWords || [];
     
     if (bannedWords.includes(normalizedWord)) {
-      console.log(`🚫 Palavra "${normalizedWord}" está banida, ignorando...`);
+      //console.log(`🚫 Palavra "${normalizedWord}" está banida, ignorando...`);
       return;
     }
     

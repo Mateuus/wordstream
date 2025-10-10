@@ -35,7 +35,7 @@ const WordItem: React.FC<WordItemProps> = React.memo(({
   }, [wordCount.count, maxCount]);
 
   return (
-    <div className="px-2 py-1">
+    <div className="px-2 py-0.5">
       <div
         className={`flex items-center justify-between p-3 rounded-xl transition-all duration-200 ${
           isBanned ? 'bg-red-900 bg-opacity-30 border border-red-500' : 
@@ -150,7 +150,7 @@ export const VirtualizedWordList: React.FC<VirtualizedWordListProps> = React.mem
       className="w-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
       style={{ height: `${height}px` }}
     >
-      <div className="space-y-1">
+      <div className="space-y-0">
         {words.map((wordCount, index) => (
           <WordItem
             key={wordCount.word}

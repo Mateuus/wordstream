@@ -635,7 +635,7 @@ function SessionPageContent({ params }: SessionPageProps) {
 
               {/* Stats */}
               {sessionStats && (
-                <div className="bg-gray-800 bg-opacity-50 rounded-xl p-3 mb-4">
+                <div className="bg-gray-800 bg-opacity-50 rounded-xl p-1 mb-2">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="text-center">
                       <div className="text-xl font-bold text-blue-400">{sessionStats.totalWords}</div>
