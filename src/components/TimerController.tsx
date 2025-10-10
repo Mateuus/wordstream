@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useSimpleSSE } from '../contexts/SimpleSSEContext';
 
 const TimerControllerComponent: React.FC = () => {
-  const { timer, startTimer, stopTimer, clearCounter } = useSimpleSSE();
+  const { timer, startTimer, stopTimer, adjustTimer, clearCounter } = useSimpleSSE();
   const [duration, setDuration] = useState(60); // 1 minuto padrão
   const [isLoading, setIsLoading] = useState(false);
 
@@ -20,6 +20,16 @@ const TimerControllerComponent: React.FC = () => {
       setIsLoading(false);
     }
   }, [duration, clearCounter, startTimer]);
+
+  const handleAdjustTimer = useCallback(async (seconds: number) => {
+    if (!timer?.isActive) return;
+    
+    try {
+      await adjustTimer(seconds);
+    } catch (error) {
+      console.error('Erro ao ajustar temporizador:', error);
+    }
+  }, [timer?.isActive, adjustTimer]);
 
   const formatTime = useCallback((seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -106,12 +116,32 @@ const TimerControllerComponent: React.FC = () => {
               </button>
             </>
           ) : (
-            <button
-              onClick={stopTimer}
-              className="w-full px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-            >
-              ⏹️ Parar
-            </button>
+            <>
+              {/* Controles de ajuste quando timer está ativo */}
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => handleAdjustTimer(-60)}
+                  className="flex-1 px-2 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
+                  title="Diminuir 1 minuto"
+                >
+                  ⏪ -1m
+                </button>
+                <button
+                  onClick={() => handleAdjustTimer(60)}
+                  className="flex-1 px-2 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  title="Aumentar 1 minuto"
+                >
+                  ⏩ +1m
+                </button>
+              </div>
+              
+              <button
+                onClick={stopTimer}
+                className="w-full px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+              >
+                ⏹️ Parar
+              </button>
+            </>
           )}
 
           {/* Status */}

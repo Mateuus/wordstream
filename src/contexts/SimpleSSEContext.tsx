@@ -81,6 +81,7 @@ interface SimpleSSEContextType {
   unbanWord: (word: string) => Promise<void>;
   startTimer: (duration: number) => Promise<void>;
   stopTimer: () => Promise<void>;
+  adjustTimer: (seconds: number) => Promise<void>;
   clearCounter: () => Promise<void>;
   updateSettings: (settings: { wordLimit?: number; bannedWords?: string[] }) => Promise<void>;
 }
@@ -439,6 +440,26 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
     }
   }, [sessionId]);
 
+  const adjustTimer = useCallback(async (seconds: number) => {
+    if (!sessionId) return;
+    
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/timer/adjust`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ seconds }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao ajustar temporizador');
+      }
+    } catch (error) {
+      console.error('Erro ao ajustar temporizador:', error);
+    }
+  }, [sessionId]);
+
   const clearCounter = useCallback(async () => {
     if (!sessionId) return;
     
@@ -517,6 +538,7 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
     unbanWord,
     startTimer,
     stopTimer,
+    adjustTimer,
     clearCounter,
     updateSettings
   };

@@ -169,4 +169,52 @@ export class TimerManager {
     
     broadcastToChannel(sessionId, eventData);
   }
+
+  async adjustTimer(sessionId: string, newRemainingTime: number): Promise<void> {
+    // Obter dados atuais da sessão
+    const sessionData = await this.redisSessionManager.getSession(sessionId);
+    if (!sessionData?.timer) {
+      throw new Error('Timer não encontrado');
+    }
+
+    const currentTimer = sessionData.timer;
+    const newEndTime = Date.now() + (newRemainingTime * 1000);
+
+    // Limpar timeout anterior
+    const oldTimeout = this.timers.get(sessionId);
+    if (oldTimeout) {
+      clearTimeout(oldTimeout);
+      this.timers.delete(sessionId);
+    }
+
+    // Atualizar timer no Redis
+    await this.redisSessionManager.updateSession(sessionId, {
+      timer: {
+        ...currentTimer,
+        endTime: newEndTime,
+        duration: newRemainingTime
+      }
+    });
+
+    // Se o novo tempo for maior que 0, configurar novo timeout
+    if (newRemainingTime > 0) {
+      const newTimeout = setTimeout(async () => {
+        await this.finishTimer(sessionId);
+      }, newRemainingTime * 1000);
+      
+      this.timers.set(sessionId, newTimeout);
+    } else {
+      // Se o tempo chegou a 0 ou menos, finalizar imediatamente
+      await this.finishTimer(sessionId);
+    }
+
+    // Notificar atualização
+    await this.notifyTimerUpdate(sessionId, {
+      isActive: newRemainingTime > 0,
+      remainingTime: Math.max(0, newRemainingTime),
+      duration: Math.max(0, newRemainingTime)
+    });
+
+    console.log(`Timer adjusted for session ${sessionId}: ${newRemainingTime}s remaining`);
+  }
 }
