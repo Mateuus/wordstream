@@ -23,7 +23,7 @@ export const WinnerDisplay: React.FC = () => {
       // Limpar o contador para nova votação
       await clearCounter();
       setIsVisible(false);
-      console.log('🔄 Nova rodada iniciada!');
+      // Nova rodada iniciada
     } catch (error) {
       console.error('❌ Erro ao iniciar nova rodada:', error);
     }

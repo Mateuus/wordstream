@@ -46,7 +46,7 @@ export default function Home() {
 
               while (!sessionFound && attempts < maxAttempts) {
                 attempts++;
-                console.log(`Tentativa ${attempts}/${maxAttempts} de verificar sessão...`);
+                // Tentativa de verificar sessão
                 
                 const sessionCheck = await fetch(`/api/session/${data.publicId}`);
                 if (sessionCheck.ok) {
@@ -54,7 +54,7 @@ export default function Home() {
                   window.location.href = data.shareUrl;
                 } else {
                   if (attempts < maxAttempts) {
-                    console.log(`Sessão não encontrada, aguardando 2 segundos...`);
+                    // Sessão não encontrada, aguardando
                     await new Promise(resolve => setTimeout(resolve, 2000));
                   }
                 }

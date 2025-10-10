@@ -192,11 +192,9 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('📨 SSE evento:', data.type);
           
           switch (data.type) {
             case 'connected':
-              console.log('🎉 Conexão SSE estabelecida');
               break;
               
             case 'chatMessage':
@@ -207,19 +205,16 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
             case 'wordUpdate':
               // Usar debounce para stats (otimização de performance)
               setPendingStats(data.stats);
-              console.log('📊 Stats recebidos:', data.stats.totalWords, 'palavras');
               break;
               
             case 'bannedWordsUpdate':
               // Usar debounce para palavras banidas (otimização de performance)
               setPendingBannedWords(data.bannedWords || []);
-              console.log('🚫 Palavras banidas atualizadas:', data.bannedWords);
               break;
               
             case 'timerFinished':
               setWinner(data.winner);
               setTimer(null);
-              console.log('🏆 Temporizador finalizado! Ganhador:', data.winner);
               break;
               
             case 'connectionStatus':
@@ -243,7 +238,7 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
               break;
               
             default:
-              console.log('❓ Tipo de evento desconhecido:', data.type);
+              // Tipo de evento desconhecido
           }
         } catch (error) {
           console.error('❌ Erro ao processar evento SSE:', error);

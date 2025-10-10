@@ -115,7 +115,7 @@ function SessionPageContent({ params }: SessionPageProps) {
           
           // Só conectar se não requer senha OU se já está autenticado
           if (!data.requiresPassword || isAuthenticated) {
-            console.log('📡 Sessão carregada, conectando ao chat:', data.channel, data.platform, 'SessionId:', data.sessionId);
+            // Sessão carregada, conectando ao chat
             await connectToChannel(data.channel, data.platform, data.sessionId);
           }
         } else {
@@ -148,7 +148,7 @@ function SessionPageContent({ params }: SessionPageProps) {
 
   const handleConnect = async () => {
     if (!sessionData) return;
-    console.log('Conectando ao canal:', sessionData.channel, sessionData.platform);
+    // Conectando ao canal
     await connectToChannel(sessionData.channel, sessionData.platform, sessionData.sessionId);
   };
 
@@ -175,7 +175,7 @@ function SessionPageContent({ params }: SessionPageProps) {
         
         // ✅ O useEffect vai detectar a mudança em isAuthenticated
         // e automaticamente carregar os dados e conectar ao chat
-        console.log('✅ Autenticado com sucesso! Carregando sessão...');
+        // Autenticado com sucesso! Carregando sessão
       } else {
         const errorData = await response.json();
         setPasswordError(errorData.error || 'Senha incorreta');
@@ -444,7 +444,7 @@ function SessionPageContent({ params }: SessionPageProps) {
                   ) : (
                     <div className="space-y-1">
                       {messages.map((message, index) => (
-                        <div key={message.id || index} className="w-full">
+                        <div key={`${message.id}-${index}`} className="w-full">
                           <div className="flex items-start space-x-2 p-2 hover:bg-white hover:bg-opacity-5 rounded-lg transition-colors">
                             <span className="text-blue-400 font-semibold text-xs">
                               {message.username}:
@@ -592,7 +592,7 @@ function SessionPageContent({ params }: SessionPageProps) {
                   ) : (
                     <div className="space-y-1">
                       {messages.map((message, index) => (
-                        <div key={message.id || index} className="w-full">
+                        <div key={`${message.id}-${index}`} className="w-full">
                           <div className="flex items-start space-x-1 p-1 hover:bg-white hover:bg-opacity-5 rounded transition-colors">
                             <span className="text-blue-400 font-semibold text-xs">
                               {message.username}:

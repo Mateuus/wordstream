@@ -24,11 +24,9 @@ function SSEConnectionManager({ children }: OptimizedSSEProviderProps) {
   const handleSSEMessage = useCallback((event: MessageEvent) => {
     try {
       const data = JSON.parse(event.data);
-      console.log('📨 SSE evento:', data.type);
       
       switch (data.type) {
         case 'connected':
-          console.log('🎉 Conexão SSE estabelecida');
           break;
           
         case 'chatMessage':
@@ -37,18 +35,15 @@ function SSEConnectionManager({ children }: OptimizedSSEProviderProps) {
           
         case 'wordUpdate':
           updateStats(data.stats);
-          console.log('📊 Stats recebidos:', data.stats.totalWords, 'palavras');
           break;
           
         case 'bannedWordsUpdate':
           updateBannedWords(data.bannedWords || []);
-          console.log('🚫 Palavras banidas atualizadas:', data.bannedWords);
           break;
           
         case 'timerFinished':
           updateWinner(data.winner);
           updateTimer(null);
-          console.log('🏆 Temporizador finalizado! Ganhador:', data.winner);
           break;
           
         case 'connectionStatus':
@@ -60,7 +55,7 @@ function SSEConnectionManager({ children }: OptimizedSSEProviderProps) {
           break;
           
         default:
-          console.log('❓ Tipo de evento desconhecido:', data.type);
+          // Tipo de evento desconhecido
       }
     } catch (error) {
       console.error('❌ Erro ao processar evento SSE:', error);
@@ -81,50 +76,55 @@ function SSEConnectionManager({ children }: OptimizedSSEProviderProps) {
 }
 
 export function OptimizedSSEProvider({ children }: OptimizedSSEProviderProps) {
-  // Handlers para os contextos
-  const handleConnect = useCallback(async (channel: string, platform: 'twitch' | 'kick' = 'twitch') => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleConnect = useCallback(async (channel: string, _platform: 'twitch' | 'kick' = 'twitch') => {
     // Implementar lógica de conexão aqui
-    console.log('Conectando ao canal:', channel, platform);
+    // Conectando ao canal
   }, []);
 
   const handleClearSession = useCallback(async () => {
     // Implementar lógica de limpeza aqui
-    console.log('Limpando sessão');
+    // Limpando sessão
   }, []);
 
-  const handleBanWord = useCallback(async (word: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleBanWord = useCallback(async (_word: string) => {
     // Implementar lógica de banir palavra aqui
-    console.log('Banindo palavra:', word);
+    // Banindo palavra
   }, []);
 
-  const handleExcludeWord = useCallback(async (word: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleExcludeWord = useCallback(async (_word: string) => {
     // Implementar lógica de excluir palavra aqui
-    console.log('Excluindo palavra:', word);
+    // Excluindo palavra
   }, []);
 
-  const handleUnbanWord = useCallback(async (word: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleUnbanWord = useCallback(async (_word: string) => {
     // Implementar lógica de desbanir palavra aqui
-    console.log('Desbanindo palavra:', word);
+    // Desbanindo palavra
   }, []);
 
-  const handleStartTimer = useCallback(async (duration: number) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleStartTimer = useCallback(async (_duration: number) => {
     // Implementar lógica de iniciar timer aqui
-    console.log('Iniciando timer:', duration);
+    // Iniciando timer
   }, []);
 
   const handleStopTimer = useCallback(async () => {
     // Implementar lógica de parar timer aqui
-    console.log('Parando timer');
+    // Parando timer
   }, []);
 
   const handleClearCounter = useCallback(async () => {
     // Implementar lógica de limpar contador aqui
-    console.log('Limpando contador');
+    // Limpando contador
   }, []);
 
-  const handleUpdateSettings = useCallback(async (settings: Record<string, unknown>) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleUpdateSettings = useCallback(async (_settings: Record<string, unknown>) => {
     // Implementar lógica de atualizar configurações aqui
-    console.log('Atualizando configurações:', settings);
+    // Atualizando configurações
   }, []);
 
   return (

@@ -261,7 +261,7 @@ function ChatPageContent({ params }: ChatPageProps) {
                     ) : (
                       <div className="space-y-1">
                         {messages.map((message, index) => (
-                          <div key={message.id || index} className="w-full">
+                          <div key={`${message.id}-${index}`} className="w-full">
                             <div className="flex items-start space-x-2 p-2 hover:bg-white hover:bg-opacity-5 rounded-lg transition-colors">
                               <span className="text-blue-400 font-semibold text-xs">
                                 {message.username}:
@@ -411,7 +411,7 @@ function ChatPageContent({ params }: ChatPageProps) {
                   ) : (
                     <div className="space-y-2">
                       {messages.map((message, index) => (
-                        <div key={message.id || index} className="w-full">
+                        <div key={`${message.id}-${index}`} className="w-full">
                           <div className="flex items-start space-x-2 p-2 hover:bg-white hover:bg-opacity-5 rounded-lg transition-colors">
                             <span className="text-blue-400 font-semibold text-sm">
                               {message.username}:
