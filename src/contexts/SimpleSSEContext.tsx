@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
-import { useDebounce, useDebouncedCallback } from '../hooks/useDebounce';
+import { useDebounce } from '../hooks/useDebounce';
 
 // Constantes de performance
 const MAX_CHAT_MESSAGES = 50; // Limite de mensagens para otimizar performance
