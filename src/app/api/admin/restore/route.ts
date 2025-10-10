@@ -58,8 +58,8 @@ export async function POST(request: NextRequest) {
         createdAt: session.createdAt,
         lastActivity: session.lastActivity,
         createdBy: session.createdBy,
-        shareUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/session/${publicId}`,
-        adminUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/session/${publicId}?admin=${session.adminKey}`
+        shareUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://contador.bdjcoins.com'}/session/${publicId}`,
+        adminUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://contador.bdjcoins.com'}/session/${publicId}?admin=${session.adminKey}`
       }
     });
 

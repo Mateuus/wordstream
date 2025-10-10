@@ -142,7 +142,7 @@ async getSessionByPublicId(publicId: string) {
 
 ```bash
 # 1. Criar sessão
-curl -X POST http://localhost:3000/api/admin/sessions \
+curl -X POST http://contador.bdjcoins.com/api/admin/sessions \
   -H "Content-Type: application/json" \
   -d '{"channel":"test","platform":"twitch"}'
 
@@ -155,7 +155,7 @@ curl -X POST http://localhost:3000/api/admin/sessions \
 # }
 
 # 2. Buscar sessão imediatamente
-curl http://localhost:3000/api/session/ABC12345
+curl http://contador.bdjcoins.com/api/session/ABC12345
 
 # ✅ Agora deve encontrar a sessão!
 ```

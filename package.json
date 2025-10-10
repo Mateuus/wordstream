@@ -7,7 +7,20 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "generate-icons": "node scripts/generate-icons.js"
+    "generate-icons": "node scripts/generate-icons.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop wordstream-pwa",
+    "pm2:restart": "pm2 restart wordstream-pwa",
+    "pm2:reload": "pm2 reload wordstream-pwa",
+    "pm2:delete": "pm2 delete wordstream-pwa",
+    "pm2:logs": "pm2 logs wordstream-pwa",
+    "pm2:monit": "pm2 monit",
+    "pm2:status": "pm2 status",
+    "pm2:start:dev": "pm2 start ecosystem.config.js --env development",
+    "pm2:start:staging": "pm2 start ecosystem.config.js --env staging",
+    "pm2:start:prod": "pm2 start ecosystem.config.js --env production",
+    "pm2:deploy:staging": "pm2 deploy ecosystem.config.js staging",
+    "pm2:deploy:prod": "pm2 deploy ecosystem.config.js production"
   },
   "dependencies": {
     "@types/react-window": "^1.8.8",

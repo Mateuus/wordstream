@@ -13,7 +13,7 @@ Foram criados 2 overlays principais para integração com OBS:
 
 ### 1. Acesse uma Sessão
 
-Vá para qualquer sessão do WordStream: `http://localhost:3000/session/[publicId]`
+Vá para qualquer sessão do WordStream: `http://contador.bdjcoins.com/session/[publicId]` (produção) ou `http://localhost:3000/session/[publicId]` (desenvolvimento)
 
 ### 2. Abra o Modal de Overlays
 
