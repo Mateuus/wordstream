@@ -1,0 +1,100 @@
+2025-10-10T03:59:18: 
+2025-10-10T03:59:18: > wordstream@0.1.0 start
+2025-10-10T03:59:18: > next start --port 3500
+2025-10-10T03:59:18: 
+2025-10-10T03:59:18:    ▲ Next.js 15.5.4
+2025-10-10T03:59:18:    - Local:        http://localhost:3500
+2025-10-10T03:59:18:    - Network:      http://10.255.255.254:3500
+2025-10-10T03:59:18: 
+2025-10-10T03:59:18:  ✓ Starting...
+2025-10-10T03:59:19: [Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id]
+2025-10-10T03:59:23: 
+2025-10-10T03:59:23: > wordstream@0.1.0 start
+2025-10-10T03:59:23: > next start --port 3500
+2025-10-10T03:59:23: 
+2025-10-10T03:59:23:    ▲ Next.js 15.5.4
+2025-10-10T03:59:23:    - Local:        http://localhost:3500
+2025-10-10T03:59:23:    - Network:      http://10.255.255.254:3500
+2025-10-10T03:59:23: 
+2025-10-10T03:59:23:  ✓ Starting...
+2025-10-10T03:59:23: [Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id]
+2025-10-10T03:59:27: 
+2025-10-10T03:59:27: > wordstream@0.1.0 start
+2025-10-10T03:59:27: > next start --port 3500
+2025-10-10T03:59:27: 
+2025-10-10T03:59:27:    ▲ Next.js 15.5.4
+2025-10-10T03:59:27:    - Local:        http://localhost:3500
+2025-10-10T03:59:27:    - Network:      http://10.255.255.254:3500
+2025-10-10T03:59:27: 
+2025-10-10T03:59:27:  ✓ Starting...
+2025-10-10T03:59:28: [Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id]
+2025-10-10T03:59:32: 
+2025-10-10T03:59:32: > wordstream@0.1.0 start
+2025-10-10T03:59:32: > next start --port 3500
+2025-10-10T03:59:32: 
+2025-10-10T03:59:32:    ▲ Next.js 15.5.4
+2025-10-10T03:59:32:    - Local:        http://localhost:3500
+2025-10-10T03:59:32:    - Network:      http://10.255.255.254:3500
+2025-10-10T03:59:32: 
+2025-10-10T03:59:32:  ✓ Starting...
+2025-10-10T03:59:32: [Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id]
+2025-10-10T03:59:36: 
+2025-10-10T03:59:36: > wordstream@0.1.0 start
+2025-10-10T03:59:36: > next start --port 3500
+2025-10-10T03:59:36: 
+2025-10-10T03:59:36:    ▲ Next.js 15.5.4
+2025-10-10T03:59:36:    - Local:        http://localhost:3500
+2025-10-10T03:59:36:    - Network:      http://10.255.255.254:3500
+2025-10-10T03:59:36: 
+2025-10-10T03:59:36:  ✓ Starting...
+2025-10-10T03:59:37: [Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id]
+2025-10-10T03:59:41: 
+2025-10-10T03:59:41: > wordstream@0.1.0 start
+2025-10-10T03:59:41: > next start --port 3500
+2025-10-10T03:59:41: 
+2025-10-10T03:59:41:    ▲ Next.js 15.5.4
+2025-10-10T03:59:41:    - Local:        http://localhost:3500
+2025-10-10T03:59:41:    - Network:      http://10.255.255.254:3500
+2025-10-10T03:59:41: 
+2025-10-10T03:59:41:  ✓ Starting...
+2025-10-10T03:59:41: [Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id]
+2025-10-10T03:59:45: 
+2025-10-10T03:59:45: > wordstream@0.1.0 start
+2025-10-10T03:59:45: > next start --port 3500
+2025-10-10T03:59:45: 
+2025-10-10T03:59:45:    ▲ Next.js 15.5.4
+2025-10-10T03:59:45:    - Local:        http://localhost:3500
+2025-10-10T03:59:45:    - Network:      http://10.255.255.254:3500
+2025-10-10T03:59:45: 
+2025-10-10T03:59:45:  ✓ Starting...
+2025-10-10T03:59:46: [Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id]
+2025-10-10T03:59:50: 
+2025-10-10T03:59:50: > wordstream@0.1.0 start
+2025-10-10T03:59:50: > next start --port 3500
+2025-10-10T03:59:50: 
+2025-10-10T03:59:50:    ▲ Next.js 15.5.4
+2025-10-10T03:59:50:    - Local:        http://localhost:3500
+2025-10-10T03:59:50:    - Network:      http://10.255.255.254:3500
+2025-10-10T03:59:50: 
+2025-10-10T03:59:50:  ✓ Starting...
+2025-10-10T03:59:50: [Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id]
+2025-10-10T03:59:54: 
+2025-10-10T03:59:54: > wordstream@0.1.0 start
+2025-10-10T03:59:54: > next start --port 3500
+2025-10-10T03:59:54: 
+2025-10-10T03:59:55:    ▲ Next.js 15.5.4
+2025-10-10T03:59:55:    - Local:        http://localhost:3500
+2025-10-10T03:59:55:    - Network:      http://10.255.255.254:3500
+2025-10-10T03:59:55: 
+2025-10-10T03:59:55:  ✓ Starting...
+2025-10-10T03:59:55: [Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id]
+2025-10-10T03:59:59: 
+2025-10-10T03:59:59: > wordstream@0.1.0 start
+2025-10-10T03:59:59: > next start --port 3500
+2025-10-10T03:59:59: 
+2025-10-10T03:59:59:    ▲ Next.js 15.5.4
+2025-10-10T03:59:59:    - Local:        http://localhost:3500
+2025-10-10T03:59:59:    - Network:      http://10.255.255.254:3500
+2025-10-10T03:59:59: 
+2025-10-10T03:59:59:  ✓ Starting...
+2025-10-10T03:59:59: [Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id]
