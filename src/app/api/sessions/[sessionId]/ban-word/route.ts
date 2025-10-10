@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RedisSessionManager } from '@/src/lib/redisSessionManager';
-import { broadcastToChannel } from '@/src/lib/simpleSSEManager';
+import { publishToSession } from '@/src/lib/sessionChannelManager';
 
 const redisSessionManager = RedisSessionManager.getInstance();
 
@@ -47,7 +47,7 @@ export async function POST(
       });
       
       // Enviar atualização via SSE
-      broadcastToSharedSession(sessionId, {
+      publishToSession(sessionId, {
         type: 'bannedWordsUpdate',
         bannedWords
       });

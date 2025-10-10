@@ -1,4 +1,8 @@
 import { RedisPubSubManager } from './redisPubSubManager';
+import { randomBytes } from 'crypto';
+
+// Identificador único deste processo (para evitar receber próprias mensagens do Redis)
+const PROCESS_ID = randomBytes(8).toString('hex');
 
 interface SharedSSEConnection {
   controller: ReadableStreamDefaultController;
@@ -50,7 +54,13 @@ export function registerSharedConnection(
     sharedSessions.set(publicId, session);
     // Conectar ao Redis apenas uma vez por sessão
     redisPubSub.subscribe(publicId, (data) => {
-      broadcastToSession(publicId, data);
+      // Verificar se a mensagem veio de outro processo
+      const messageData = data as { _processId?: string };
+      if (messageData._processId && messageData._processId !== PROCESS_ID) {
+        // Mensagem de outro processo, fazer broadcast local
+        broadcastToSession(publicId, data);
+      }
+      // Se _processId === PROCESS_ID, ignorar (já enviamos localmente)
     }).catch(console.error);
     
     session.redisSubscription = true;
@@ -112,7 +122,11 @@ function broadcastToSession(publicId: string, data: unknown): void {
     return true;
   };
   
-  const message = `data: ${JSON.stringify(data)}\n\n`;
+  // Remover _processId antes de enviar aos clientes (é apenas para controle interno)
+  const cleanData = { ...data as object };
+  delete (cleanData as { _processId?: string })._processId;
+  
+  const message = `data: ${JSON.stringify(cleanData)}\n\n`;
   const encodedMessage = new TextEncoder().encode(message);
   
   // Determinar tipo de mensagem
@@ -140,13 +154,22 @@ function broadcastToSession(publicId: string, data: unknown): void {
 
 /**
  * Faz broadcast via Redis para uma sessão compartilhada
+ * IMPORTANTE: Envia localmente PRIMEIRO, depois publica no Redis para outros processos
  */
 export function broadcastToSharedSession(publicId: string, data: unknown): void {
-  redisPubSub.publish(publicId, data).catch((error) => {
+  // 1. Enviar localmente PRIMEIRO (para conexões SSE deste processo)
+  broadcastToSession(publicId, data);
+  
+  // 2. Adicionar identificador do processo à mensagem
+  const messageWithProcessId = {
+    ...data as object,
+    _processId: PROCESS_ID
+  };
+  
+  // 3. Publicar no Redis para outros processos
+  // O handler Redis vai ignorar mensagens com o mesmo _processId
+  redisPubSub.publish(publicId, messageWithProcessId).catch((error) => {
     console.error(`Erro ao publicar via Redis:`, error);
-    
-    // Fallback: enviar localmente se Redis falhar
-    broadcastToSession(publicId, data);
   });
 }
 

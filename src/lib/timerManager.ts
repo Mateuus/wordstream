@@ -1,5 +1,5 @@
 import { RedisSessionManager } from './redisSessionManager';
-import { broadcastToSharedSession } from './sharedSSEManager';
+import { publishToSession } from './sessionChannelManager';
 
 export interface TimerData {
   duration: number; // em segundos
@@ -156,7 +156,7 @@ export class TimerManager {
       timestamp: Date.now()
     };
     
-    broadcastToSharedSession(sessionId, eventData);
+    publishToSession(sessionId, eventData);
   }
 
   private async notifyTimerFinished(sessionId: string, winner: WinnerData): Promise<void> {
@@ -167,7 +167,7 @@ export class TimerManager {
       timestamp: Date.now()
     };
     
-    broadcastToSharedSession(sessionId, eventData);
+    publishToSession(sessionId, eventData);
   }
 
   async adjustTimer(sessionId: string, newRemainingTime: number): Promise<void> {

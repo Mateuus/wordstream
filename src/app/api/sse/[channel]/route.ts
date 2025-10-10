@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { registerSharedConnection, unregisterSharedConnection } from '@/src/lib/sharedSSEManager';
+import { subscribeToSession, unsubscribeFromSession } from '@/src/lib/sessionChannelManager';
 import { RedisSessionManager } from '@/src/lib/redisSessionManager';
 
 export async function GET(
@@ -14,9 +14,9 @@ export async function GET(
 
   const stream = new ReadableStream({
     async start(controller) {
-      // Registrar conexão na sessão compartilhada
+      // Subscrever ao canal da sessão
       const clientType = isOverlay ? 'overlay' : 'session';
-      const clientId = registerSharedConnection(publicId, twitchChannel || 'desconhecido', controller, clientType);
+      const clientId = subscribeToSession(publicId, controller, clientType);
       console.log(`🔌 Cliente SSE ${clientId} conectado à sessão ${publicId} (tipo: ${clientType})`);
 
       // Enviar mensagem de conexão
@@ -64,7 +64,7 @@ export async function GET(
       // Cleanup quando conexão for fechada
       request.signal.addEventListener('abort', () => {
         clearInterval(heartbeat);
-        unregisterSharedConnection(publicId, clientId);
+        unsubscribeFromSession(publicId, clientId);
       });
     }
   });

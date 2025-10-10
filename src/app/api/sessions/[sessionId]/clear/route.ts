@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RedisSessionManager } from '@/src/lib/redisSessionManager';
-import { broadcastToSharedSession } from '@/src/lib/sharedSSEManager';
+import { publishToSession } from '@/src/lib/sessionChannelManager';
 
 const redisSessionManager = RedisSessionManager.getInstance();
 
@@ -40,7 +40,7 @@ export async function POST(
     // Enviar atualização das estatísticas
     const updatedStats = await redisSessionManager.getSessionStats(sessionId);
     if (updatedStats) {
-      broadcastToSharedSession(sessionId, {
+      publishToSession(sessionId, {
         type: 'wordUpdate',
         stats: updatedStats
       });
