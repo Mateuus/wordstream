@@ -285,17 +285,21 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
           <div 
             className={`timer-display ${timer.remainingTime <= 10 ? 'warning' : ''}`}
             style={{
+              position: 'absolute',
+              top: '50%',
+              left: '47%',
+              transform: 'translate(-50%, -50%)',
               fontSize: '48px',
               fontWeight: 'bold',
               color: timer.remainingTime <= 10 ? '#ff4444' : '#0066cc',
               textShadow: 'none',
               background: 'transparent',
               padding: '20px 30px',
-              borderRadius: '50%',
+              borderRadius: '10px',
               border: `3px solid ${timer.remainingTime <= 10 ? '#ff4444' : '#0066cc'}`,
               textAlign: 'center',
               minWidth: '200px',
-              minHeight: '200px',
+              minHeight: '80px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
@@ -311,8 +315,9 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
             className="result-card"
             style={{
               position: 'absolute',
-              top: '15px',
-              left: '15px',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
               background: 'rgba(0, 0, 0, 0.3)',
               padding: '20px',
               borderRadius: '15px',
