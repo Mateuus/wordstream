@@ -15,13 +15,19 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    if (!sessionId) {
+      return NextResponse.json({ 
+        error: 'SessionId is required' 
+      }, { status: 400 });
+    }
+
     if (!['twitch', 'kick'].includes(platform)) {
       return NextResponse.json({ 
         error: 'Platform must be twitch or kick' 
       }, { status: 400 });
     }
 
-    // Conectar ao canal usando a sessão existente se fornecida
+    // Conectar ao canal usando a sessão existente (obrigatória)
     const connectedSessionId = await chatConnector.connectToChannel(channel, platform, sessionId);
     
     return NextResponse.json({ 

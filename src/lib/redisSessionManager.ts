@@ -24,58 +24,146 @@ interface SessionData {
 export class RedisSessionManager {
   private static instance: RedisSessionManager;
   private redis: ReturnType<typeof createClient> | null = null;
-  private sessions = new Map<string, SessionData>(); // Cache local
+  private sessions = new Map<string, SessionData>(); // Cache local (apenas para fallback temporário)
   private readonly TTL = 24 * 60 * 60; // 24 horas em segundos
   private redisAvailable = false;
+  private keepAliveInterval: NodeJS.Timeout | null = null;
+  private initializationPromise: Promise<void> | null = null;
+  private readonly MAX_RETRIES = 3;
+  private readonly RETRY_DELAY = 1000; // 1 segundo
 
   private constructor() {
-    // Verificar se Redis está disponível
-    try {
-      this.redis = createClient({
-        url: process.env.REDIS_URL || 'redis://localhost:6379'
-      });
-      
-      this.redis.on('error', (err: unknown) => {
-        console.error('Redis Client Error:', err);
-        this.redisAvailable = false;
-        console.log('Falling back to in-memory storage');
-      });
-      
-      this.redis.connect().then(() => {
-        this.redisAvailable = true;
-        console.log('Redis connected successfully');
-        
-        // Tentar sincronizar sessões do cache local com Redis
-        this.syncLocalSessionsToRedis();
-      }).catch(() => {
-        this.redisAvailable = false;
-        console.log('Redis connection failed, using in-memory storage');
-      });
-    } catch {
-      console.log('Redis not available, using in-memory storage');
-      this.redisAvailable = false;
-    }
+    // Constructor vazio - inicialização será feita no getInstance
   }
 
   static getInstance(): RedisSessionManager {
     if (!RedisSessionManager.instance) {
       RedisSessionManager.instance = new RedisSessionManager();
+      // Inicializar Redis e aguardar
+      RedisSessionManager.instance.initializationPromise = 
+        RedisSessionManager.instance.initializeRedis().catch(console.error).then(() => undefined);
+      RedisSessionManager.instance.startKeepAlive();
     }
     return RedisSessionManager.instance;
   }
 
+  /**
+   * Aguarda a inicialização do Redis estar completa
+   */
+  private async ensureRedisReady(retries = this.MAX_RETRIES): Promise<boolean> {
+    // Aguardar inicialização em andamento
+    if (this.initializationPromise) {
+      await this.initializationPromise;
+    }
+
+    // Se Redis já está disponível, retornar
+    if (this.redis && this.redisAvailable) {
+      return true;
+    }
+
+    // Tentar reconectar se necessário
+    if (retries > 0 && this.redis && !this.redisAvailable) {
+      try {
+        console.log(`🔄 Tentando reconectar ao Redis (${this.MAX_RETRIES - retries + 1}/${this.MAX_RETRIES})...`);
+        if (!this.redis.isOpen) {
+          await this.redis.connect();
+        }
+        await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
+        return this.ensureRedisReady(retries - 1);
+      } catch (error) {
+        console.error(`❌ Falha ao reconectar (tentativa ${this.MAX_RETRIES - retries + 1}):`, error);
+        await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
+        return this.ensureRedisReady(retries - 1);
+      }
+    }
+
+    return this.redisAvailable;
+  }
+
+  /**
+   * Inicializa conexão Redis persistente
+   */
+  public async initializeRedis(): Promise<void> {
+    try {
+      this.redis = createClient({
+        url: process.env.REDIS_URL || 'redis://localhost:6379',
+        socket: {
+          reconnectStrategy: (retries) => {
+            if (retries > 10) {
+              console.log('Redis: Max reconnection attempts reached');
+              return false;
+            }
+            return Math.min(retries * 100, 3000);
+          }
+        }
+      });
+      
+      this.redis.on('error', (err: unknown) => {
+        console.error('❌ Redis Client Error:', err);
+        this.redisAvailable = false;
+      });
+
+      this.redis.on('connect', () => {
+        console.log('✅ Redis conectado com sucesso');
+        this.redisAvailable = true;
+        // Sincronizar apenas se houver sessões no cache local (fallback do início)
+        if (this.sessions.size > 0) {
+          console.log(`🔄 Cache local tem ${this.sessions.size} sessões para sincronizar`);
+          this.syncLocalSessionsToRedis();
+        }
+      });
+
+      this.redis.on('disconnect', () => {
+        console.log('⚠️ Redis desconectado');
+        this.redisAvailable = false;
+      });
+
+      // Conectar imediatamente
+      await this.redis.connect();
+      
+    } catch (error) {
+      console.error('Error initializing Redis:', error);
+      this.redisAvailable = false;
+    }
+  }
+
+  /**
+   * Mantém conexão Redis ativa com keep-alive
+   */
+  public startKeepAlive(): void {
+    this.keepAliveInterval = setInterval(async () => {
+      if (this.redis && !this.redisAvailable) {
+        try {
+          await this.redis.connect();
+          console.log('Redis reconnected via keep-alive');
+        } catch (error) {
+          console.log('Redis keep-alive reconnection failed:', error);
+        }
+      } else if (this.redis && this.redisAvailable) {
+        try {
+          // Ping para manter conexão viva
+          await this.redis.ping();
+        } catch (error) {
+          console.log('Redis ping failed:', error);
+          this.redisAvailable = false;
+        }
+      }
+    }, 5000); // A cada 5 segundos
+  }
+
   async createSession(
-    channel: string, 
-    platform: 'twitch' | 'kick' = 'twitch', 
+    channel: string,
+    platform: 'twitch' | 'kick' = 'twitch',
     createdBy: string = 'admin',
     password?: string
   ): Promise<{ sessionId: string; publicId: string; adminKey: string }> {
-    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Usar publicId como ID principal (mais limpo)
     const publicId = Math.random().toString(36).substr(2, 8).toUpperCase();
+    const sessionId = publicId; // Usar publicId como sessionId também
     const adminKey = Math.random().toString(36).substr(2, 12); // Chave única para admin
-    
+
     const sessionData: SessionData = {
-      id: sessionId,
+      id: sessionId, // Agora sessionId = publicId
       publicId,
       channel,
       platform,
@@ -90,40 +178,44 @@ export class RedisSessionManager {
     };
 
     try {
-      // Sempre salvar no cache local primeiro
-      this.sessions.set(sessionId, sessionData);
-      
-      // Tentar salvar no Redis se disponível
-      if (this.redis && this.redisAvailable) {
+      // Aguardar Redis estar pronto antes de criar sessão
+      console.log(`🔄 Aguardando Redis estar disponível para criar sessão ${sessionId}...`);
+      const redisReady = await this.ensureRedisReady();
+
+      if (redisReady && this.redis) {
+        // Redis disponível - usar como fonte principal
         try {
           await this.redis.setEx(
-            `session:${sessionId}`, 
+            `WordStream:session:${sessionId}`, 
             this.TTL, 
             JSON.stringify({
               ...sessionData,
               wordCounts: Array.from(sessionData.wordCounts.entries())
             })
           );
-
-          // Salvar mapeamento publicId -> sessionId
-          await this.redis.setEx(`public:${publicId}`, this.TTL, sessionId);
           
-          // Salvar mapeamento adminKey -> sessionId
-          await this.redis.setEx(`admin:${adminKey}`, this.TTL, sessionId);
+          console.log(`✅ Sessão ${sessionId} criada com sucesso no Redis`);
           
-          console.log(`Session ${sessionId} created successfully in Redis`);
+          // Salvar no cache local apenas como backup
+          this.sessions.set(sessionId, sessionData);
+          
+          return { sessionId, publicId, adminKey };
         } catch (redisError) {
-          console.error('Redis error during session creation:', redisError);
-          // Continuar mesmo se Redis falhar
+          console.error('❌ Erro Redis durante criação da sessão:', redisError);
+          // Fallback para cache local
         }
-      } else {
-        console.log(`Session ${sessionId} created in local cache only (Redis not available)`);
       }
-      
+
+      // Fallback: salvar apenas no cache local
+      console.log(`⚠️ Redis não disponível - salvando sessão ${sessionId} apenas no cache local`);
+      this.sessions.set(sessionId, sessionData);
+      console.log(`💾 Sessão ${sessionId} salva no cache local (fallback)`);
+      console.log(`📊 Total de sessões no cache local: ${this.sessions.size}`);
+
       return { sessionId, publicId, adminKey };
     } catch (error) {
-      console.error('Error creating session:', error);
-      // Fallback: apenas cache local
+      console.error('❌ Erro ao criar sessão:', error);
+      // Fallback final: apenas cache local
       this.sessions.set(sessionId, sessionData);
       return { sessionId, publicId, adminKey };
     }
@@ -133,7 +225,7 @@ export class RedisSessionManager {
     try {
       // Tentar buscar no Redis primeiro
       if (this.redis && this.redisAvailable) {
-        const data = await this.redis.get(`session:${sessionId}`);
+        const data = await this.redis.get(`WordStream:session:${sessionId}`);
         if (data) {
           const parsed = JSON.parse(data);
           const session: SessionData = {
@@ -160,54 +252,65 @@ export class RedisSessionManager {
   async getSessionByPublicId(publicId: string): Promise<SessionData | null> {
     try {
       console.log(`🔍 Buscando sessão com publicId: ${publicId}`);
-      console.log(`📊 Estado Redis: ${this.redisAvailable ? 'Disponível' : 'Indisponível'}`);
       
-      // Tentar buscar no Redis primeiro
-      if (this.redis && this.redisAvailable) {
+      // Aguardar Redis estar pronto com retry
+      console.log(`🔄 Aguardando Redis estar disponível...`);
+      const redisReady = await this.ensureRedisReady();
+      console.log(`📊 Estado Redis: ${redisReady ? 'Disponível' : 'Indisponível'}`);
+      
+      // Prioridade 1: Buscar no Redis (fonte de verdade)
+      if (redisReady && this.redis) {
         try {
-          const sessionId = await this.redis.get(`public:${publicId}`);
-          console.log(`🔑 SessionId encontrado no Redis: ${sessionId}`);
-          if (sessionId) {
-            const session = await this.getSession(sessionId);
-            if (session) {
-              console.log(`✅ Sessão encontrada no Redis: ${session.id}`);
-              return session;
-            }
+          // Buscar diretamente pela chave WordStream:session:{publicId}
+          const sessionData = await this.redis.get(`WordStream:session:${publicId}`);
+          if (sessionData) {
+            const parsed = JSON.parse(sessionData);
+            const session: SessionData = {
+              ...parsed,
+              wordCounts: new Map(parsed.wordCounts || []),
+              createdAt: new Date(parsed.createdAt),
+              lastActivity: new Date(parsed.lastActivity)
+            };
+            
+            // Atualizar cache local para leituras futuras
+            this.sessions.set(publicId, session);
+            console.log(`✅ Sessão encontrada no Redis: ${session.id}`);
+            console.log(`📊 Cache local atualizado. Total de sessões: ${this.sessions.size}`);
+            return session;
           }
         } catch (redisError) {
           console.error('❌ Erro Redis durante getSessionByPublicId:', redisError);
-          // Continuar para fallback local
+          // Continuar para fallback
         }
       }
       
       // Fallback: buscar no cache local
-      console.log(`🔍 Buscando no cache local... Total de sessões: ${this.sessions.size}`);
-      for (const session of this.sessions.values()) {
-        console.log(`📋 Verificando sessão: ${session.id} (publicId: ${session.publicId})`);
-        if (session.publicId === publicId) {
-          console.log(`✅ Sessão encontrada no cache local: ${session.id}`);
-          
-          // Tentar sincronizar com Redis se estiver disponível agora
-          if (this.redis && this.redisAvailable) {
-            try {
-              console.log(`🔄 Sincronizando sessão ${session.id} com Redis...`);
-              await this.redis.setEx(
-                `session:${session.id}`, 
-                this.TTL, 
-                JSON.stringify({
-                  ...session,
-                  wordCounts: Array.from(session.wordCounts.entries())
-                })
-              );
-              await this.redis.setEx(`public:${publicId}`, this.TTL, session.id);
-              console.log(`✅ Sessão sincronizada com Redis`);
-            } catch (syncError) {
-              console.error('❌ Erro ao sincronizar com Redis:', syncError);
-            }
+      console.log(`🔍 Buscando no cache local (fallback)... Total de sessões: ${this.sessions.size}`);
+      console.log(`🔑 Chaves no cache local:`, Array.from(this.sessions.keys()));
+      const session = this.sessions.get(publicId);
+      
+      if (session) {
+        console.log(`✅ Sessão encontrada no cache local: ${session.id}`);
+        
+        // Tentar sincronizar com Redis se estiver disponível agora
+        if (this.redis && this.redisAvailable) {
+          try {
+            console.log(`🔄 Sincronizando sessão ${session.id} com Redis...`);
+            await this.redis.setEx(
+              `WordStream:session:${session.id}`, 
+              this.TTL, 
+              JSON.stringify({
+                ...session,
+                wordCounts: Array.from(session.wordCounts.entries())
+              })
+            );
+            console.log(`✅ Sessão sincronizada com Redis`);
+          } catch (syncError) {
+            console.error('❌ Erro ao sincronizar com Redis:', syncError);
           }
-          
-          return session;
         }
+        
+        return session;
       }
       
       console.log(`❌ Sessão não encontrada para publicId: ${publicId}`);
@@ -221,11 +324,11 @@ export class RedisSessionManager {
   async getAllActiveSessions(): Promise<SessionData[]> {
     try {
       if (this.redis && this.redisAvailable) {
-        const keys = await this.redis.keys('session:*');
+        const keys = await this.redis.keys('WordStream:session:*');
         const sessions: SessionData[] = [];
 
         for (const key of keys) {
-          const sessionId = key.replace('session:', '');
+          const sessionId = key.replace('WordStream:session:', '');
           const session = await this.getSession(sessionId);
           if (session && session.isActive) {
             sessions.push(session);
@@ -244,13 +347,18 @@ export class RedisSessionManager {
   }
 
   async verifyPassword(sessionId: string, password: string): Promise<boolean> {
-    const session = await this.getSession(sessionId);
-    if (!session) return false;
-    
-    // Se não tem senha definida, sempre permite
-    if (!session.password) return true;
-    
-    return session.password === password;
+    try {
+      const session = await this.getSession(sessionId);
+      if (!session || !session.password) {
+        return false;
+      }
+      
+      // Comparação simples de senha (em produção, usar hash)
+      return session.password === password;
+    } catch (error) {
+      console.error('Erro ao verificar senha:', error);
+      return false;
+    }
   }
 
   async verifyAdminKey(adminKey: string): Promise<boolean> {
@@ -303,7 +411,7 @@ export class RedisSessionManager {
     try {
       if (this.redis && this.redisAvailable) {
         await this.redis.setEx(
-          `session:${sessionId}`, 
+          `WordStream:session:${sessionId}`, 
           this.TTL, 
           JSON.stringify({
             ...session,
@@ -340,7 +448,7 @@ export class RedisSessionManager {
       .slice(0, 10);
 
     const stats = {
-      sessionId: session.id,
+      sessionId: session.publicId, // Usar publicId como sessionId
       publicId: session.publicId,
       channel: session.channel,
       platform: session.platform,
@@ -359,7 +467,7 @@ export class RedisSessionManager {
   async clearSession(sessionId: string): Promise<void> {
     try {
       if (this.redis && this.redisAvailable) {
-        await this.redis.del(`session:${sessionId}`);
+        await this.redis.del(`WordStream:session:${sessionId}`);
       }
       this.sessions.delete(sessionId);
     } catch (error) {
@@ -379,11 +487,9 @@ export class RedisSessionManager {
 
       // Renovar TTL no Redis se disponível
       if (this.redis && this.redisAvailable) {
-        const exists = await this.redis.exists(`session:${sessionId}`);
+        const exists = await this.redis.exists(`WordStream:session:${sessionId}`);
         if (exists) {
-          await this.redis.expire(`session:${sessionId}`, this.TTL);
-          await this.redis.expire(`public:${session.publicId}`, this.TTL);
-          await this.redis.expire(`admin:${session.adminKey}`, this.TTL);
+          await this.redis.expire(`WordStream:session:${sessionId}`, this.TTL);
         }
       }
       
@@ -458,19 +564,17 @@ export class RedisSessionManager {
     for (const [sessionId, session] of this.sessions.entries()) {
       try {
         // Verificar se a sessão já existe no Redis
-        const exists = await this.redis.exists(`session:${sessionId}`);
+        const exists = await this.redis.exists(`WordStream:session:${sessionId}`);
         if (exists === 0) {
           // Sessão não existe no Redis, sincronizar
           await this.redis.setEx(
-            `session:${sessionId}`, 
+            `WordStream:session:${sessionId}`, 
             this.TTL, 
             JSON.stringify({
               ...session,
               wordCounts: Array.from(session.wordCounts.entries())
             })
           );
-          await this.redis.setEx(`public:${session.publicId}`, this.TTL, sessionId);
-          await this.redis.setEx(`admin:${session.adminKey}`, this.TTL, sessionId);
           console.log(`✅ Sessão ${sessionId} sincronizada com Redis`);
         }
       } catch (error) {
@@ -479,5 +583,19 @@ export class RedisSessionManager {
     }
     
     console.log(`✅ Sincronização concluída`);
+  }
+
+  /**
+   * Para o keep-alive e limpa recursos
+   */
+  public cleanup(): void {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
+    }
+    
+    if (this.redis) {
+      this.redis.disconnect();
+    }
   }
 }

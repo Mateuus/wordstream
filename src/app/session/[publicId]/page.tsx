@@ -26,6 +26,10 @@ function SessionPageContent({ params }: SessionPageProps) {
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passwordPrompt, setPasswordPrompt] = useState(false);
+  const [password, setPassword] = useState<string>('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   
   const {
     sessionStats,
@@ -56,9 +60,18 @@ function SessionPageContent({ params }: SessionPageProps) {
           setSessionData(data);
           setError(null);
           
-          // Conectar automaticamente ao chat quando a sessão for carregada usando o sessionId existente
-          console.log('Sessão carregada, conectando ao chat:', data.channel, data.platform, 'SessionId:', data.sessionId);
-          await connectToChannel(data.channel, data.platform, data.sessionId);
+          // Verificar se a sessão requer senha
+          if (data.requiresPassword && !isAuthenticated) {
+            setPasswordPrompt(true);
+            setIsLoading(false);
+            return; // NÃO conectar ainda, aguardar autenticação
+          }
+          
+          // Só conectar se não requer senha OU se já está autenticado
+          if (!data.requiresPassword || isAuthenticated) {
+            console.log('📡 Sessão carregada, conectando ao chat:', data.channel, data.platform, 'SessionId:', data.sessionId);
+            await connectToChannel(data.channel, data.platform, data.sessionId);
+          }
         } else {
           const errorData = await response.json();
           setError(errorData.error || 'Sessão não encontrada');
@@ -72,7 +85,8 @@ function SessionPageContent({ params }: SessionPageProps) {
     };
 
     loadSession();
-  }, [publicId, connectToChannel]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicId, isAuthenticated]); // isAuthenticated dispara reconexão após autenticar
 
   // Auto-scroll para a última mensagem apenas dentro do container do chat
   useEffect(() => {
@@ -92,6 +106,89 @@ function SessionPageContent({ params }: SessionPageProps) {
     await connectToChannel(sessionData.channel, sessionData.platform, sessionData.sessionId);
   };
 
+  const handlePasswordSubmit = async () => {
+    if (!password.trim()) {
+      setPasswordError('Senha é obrigatória');
+      return;
+    }
+
+    try {
+      setPasswordError(null);
+      const response = await fetch(`/api/session/${publicId}/auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: password.trim() }),
+      });
+
+      if (response.ok) {
+        setIsAuthenticated(true);
+        setPasswordPrompt(false);
+        setPassword('');
+        
+        // ✅ O useEffect vai detectar a mudança em isAuthenticated
+        // e automaticamente carregar os dados e conectar ao chat
+        console.log('✅ Autenticado com sucesso! Carregando sessão...');
+      } else {
+        const errorData = await response.json();
+        setPasswordError(errorData.error || 'Senha incorreta');
+      }
+    } catch (error) {
+      setPasswordError('Erro ao verificar senha');
+      console.error('Erro ao verificar senha:', error);
+    }
+  };
+
+
+  // Password prompt modal
+  if (passwordPrompt) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex items-center justify-center">
+        <div className="glass rounded-2xl p-8 w-full max-w-md mx-6">
+          <div className="text-center mb-6">
+            <div className="text-6xl mb-4">🔒</div>
+            <h1 className="text-2xl font-bold text-white mb-2">
+              Sessão Protegida
+            </h1>
+            <p className="text-gray-300">
+              Esta sessão requer senha para acesso
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Senha da Sessão
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Digite a senha"
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+              />
+            </div>
+
+            {passwordError && (
+              <div className="p-3 bg-red-900 text-red-200 rounded-lg">
+                <p>❌ {passwordError}</p>
+              </div>
+            )}
+
+            <button
+              onClick={handlePasswordSubmit}
+              disabled={!password.trim()}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-lg font-semibold transition-colors"
+            >
+              🔓 Acessar Sessão
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Loading state
   if (isLoading) {
@@ -391,7 +488,7 @@ function SessionPageContent({ params }: SessionPageProps) {
                 {/* Header do Chat */}
                 <div className="bg-white bg-opacity-10 px-4 py-3 border-b border-white border-opacity-20">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-white font-medium">
+                    <h3 className="text-black font-medium">
                       Chat em Tempo Real - {sessionData?.channel}
                     </h3>
                     <div className="flex items-center space-x-2">

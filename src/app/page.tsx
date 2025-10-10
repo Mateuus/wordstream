@@ -35,28 +35,38 @@ export default function Home() {
       const data = await response.json();
       setResult(data);
       
-      if (response.ok) {
-        // Aguardar um pouco antes de redirecionar para garantir que a sessão foi criada
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Verificar se a sessão existe antes de redirecionar
-        const sessionCheck = await fetch(`/api/session/${data.publicId}`);
-        if (sessionCheck.ok) {
-          window.location.href = data.shareUrl;
-        } else {
-          // Se não encontrou, tentar novamente após mais tempo
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          const retryCheck = await fetch(`/api/session/${data.publicId}`);
-          if (retryCheck.ok) {
-            window.location.href = data.shareUrl;
-          } else {
-            setResult({ 
-              error: 'Sessão criada mas não foi possível acessá-la. Tente novamente em alguns segundos.',
-              shareUrl: data.shareUrl 
-            });
-          }
-        }
-      }
+            if (response.ok) {
+              // Aguardar mais tempo para garantir que Redis estabilize
+              await new Promise(resolve => setTimeout(resolve, 3000));
+
+              // Verificar se a sessão existe antes de redirecionar
+              let sessionFound = false;
+              let attempts = 0;
+              const maxAttempts = 5;
+
+              while (!sessionFound && attempts < maxAttempts) {
+                attempts++;
+                console.log(`Tentativa ${attempts}/${maxAttempts} de verificar sessão...`);
+                
+                const sessionCheck = await fetch(`/api/session/${data.publicId}`);
+                if (sessionCheck.ok) {
+                  sessionFound = true;
+                  window.location.href = data.shareUrl;
+                } else {
+                  if (attempts < maxAttempts) {
+                    console.log(`Sessão não encontrada, aguardando 2 segundos...`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                  }
+                }
+              }
+
+              if (!sessionFound) {
+                setResult({
+                  error: 'Sessão criada mas Redis ainda está estabilizando. Aguarde alguns segundos e acesse o link manualmente.',
+                  shareUrl: data.shareUrl
+                });
+              }
+            }
     } catch (error) {
       console.error('Erro ao criar sessão:', error);
       setResult({ error: 'Erro ao criar sessão. Verifique sua conexão e tente novamente.' });
@@ -356,14 +366,14 @@ export default function Home() {
                 disabled={isLoading || !channel.trim()}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-lg font-semibold transition-colors"
               >
-                {isLoading ? (
-                  <span className="flex items-center justify-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Criando e verificando sessão...</span>
-                  </span>
-                ) : (
-                  '🚀 Criar Sessão'
-                )}
+          {isLoading ? (
+            <span className="flex items-center justify-center space-x-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <span>Criando e estabilizando sessão...</span>
+            </span>
+          ) : (
+            '🚀 Criar Sessão'
+          )}
               </button>
             </div>
           </div>

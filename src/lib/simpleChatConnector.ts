@@ -1,5 +1,5 @@
 import tmi from 'tmi.js';
-import { broadcastToChannel } from './simpleSSEManager';
+import { broadcastToChannel, getActiveConnectionsCount } from './simpleSSEManager';
 import { RedisSessionManager } from './redisSessionManager';
 
 interface ChatMessage {
@@ -13,8 +13,10 @@ interface ChatMessage {
 
 export class SimpleChatConnector {
   private static instance: SimpleChatConnector;
-  private connections = new Map<string, tmi.Client>();
+  private connections = new Map<string, tmi.Client>(); // channelName -> client
+  private sessionToChannel = new Map<string, string>(); // sessionId -> channelName
   private sessionManager = RedisSessionManager.getInstance();
+  private connectionCheckInterval: NodeJS.Timeout | null = null;
 
   static getInstance(): SimpleChatConnector {
     if (!SimpleChatConnector.instance) {
@@ -23,21 +25,35 @@ export class SimpleChatConnector {
     return SimpleChatConnector.instance;
   }
 
-  async connectToChannel(channel: string, platform: 'twitch' | 'kick' = 'twitch', existingSessionId?: string): Promise<string> {
+  async connectToChannel(channel: string, _platform: 'twitch' | 'kick' = 'twitch', existingSessionId?: string): Promise<string> {
     try {
-      let sessionId = existingSessionId;
-      
-      // Se não foi fornecido um sessionId, criar uma nova sessão
-      if (!sessionId) {
-        const sessionData = await this.sessionManager.createSession(channel, platform, 'chat-connector');
-        sessionId = sessionData.sessionId;
+      // SEMPRE usar a sessão existente fornecida
+      if (!existingSessionId) {
+        throw new Error('SessionId é obrigatório para conectar ao chat');
       }
       
-      if (platform === 'twitch') {
-        await this.connectToTwitch(channel, sessionId);
+      console.log(`🔗 Conectando chat à sessão existente: ${existingSessionId}`);
+      
+      // 🔍 Buscar dados da sessão pelo publicId para obter o canal e plataforma corretos
+      // Isso garante que usamos os dados da sessão criada, não os parâmetros
+      const session = await this.sessionManager.getSessionByPublicId(existingSessionId);
+      if (!session) {
+        throw new Error(`Sessão ${existingSessionId} não encontrada`);
       }
       
-      return sessionId;
+      const actualChannel = session.channel;
+      const actualPlatform = session.platform;
+      
+      console.log(`📺 Canal obtido da sessão: ${actualChannel} (plataforma: ${actualPlatform})`);
+      
+      if (actualPlatform === 'twitch') {
+        await this.connectToTwitch(actualChannel, existingSessionId);
+      }
+      
+      // Iniciar verificação periódica de conexões SSE
+      this.startConnectionCheck();
+      
+      return existingSessionId;
     } catch (error) {
       console.error('Erro ao conectar ao canal:', error);
       throw error;
@@ -75,8 +91,8 @@ export class SimpleChatConnector {
       client.on('connected', () => {
         console.log(`✅ Conectado ao canal Twitch: ${channel}`);
         
-        // Enviar status de conexão via SSE
-        broadcastToChannel(channel, {
+        // 🔑 Enviar status de conexão via SSE usando sessionId (publicId)
+        broadcastToChannel(sessionId, {
           type: 'connectionStatus',
           status: { isConnected: true, channel, platform: 'twitch' }
         });
@@ -85,8 +101,8 @@ export class SimpleChatConnector {
       client.on('disconnected', (reason: string) => {
         console.log(`❌ Desconectado do canal Twitch: ${channel}`, reason);
         
-        // Enviar status de desconexão via SSE
-        broadcastToChannel(channel, {
+        // 🔑 Enviar status de desconexão via SSE usando sessionId (publicId)
+        broadcastToChannel(sessionId, {
           type: 'connectionStatus',
           status: { isConnected: false, channel, platform: 'twitch' }
         });
@@ -94,6 +110,8 @@ export class SimpleChatConnector {
 
       await client.connect();
       this.connections.set(channel, client);
+      this.sessionToChannel.set(sessionId, channel); // Mapear sessionId -> channelName
+      console.log(`🔗 Mapeamento criado: sessionId ${sessionId} -> canal ${channel}`);
 
     } catch (error) {
       console.error('Erro ao conectar ao Twitch:', error);
@@ -105,8 +123,9 @@ export class SimpleChatConnector {
     try {
       console.log(`📨 Processando mensagem: "${message.message}" de ${message.username} para sessão ${sessionId}`);
       
-      // Enviar mensagem via SSE para o frontend
-      broadcastToChannel(message.channel, {
+      // 🔑 SEMPRE enviar via SSE - o broadcast vai falhar silenciosamente se não houver conexões
+      // Isso resolve o problema de serverless onde o Map de conexões não é compartilhado entre processos
+      broadcastToChannel(sessionId, {
         type: 'chatMessage',
         message: message
       });
@@ -117,11 +136,11 @@ export class SimpleChatConnector {
         console.log(`🔤 Primeira palavra extraída: "${firstWord}"`);
         await this.sessionManager.processWord(sessionId, firstWord);
         
-        // Enviar atualização de palavras via SSE
+        // Enviar atualização de palavras via SSE usando sessionId (publicId)
         const stats = await this.sessionManager.getSessionStats(sessionId);
         if (stats) {
           console.log(`📊 Stats atualizadas: ${stats.totalWords} palavras totais, ${stats.uniqueWords} únicas`);
-          broadcastToChannel(message.channel, {
+          broadcastToChannel(sessionId, {
             type: 'wordUpdate',
             stats: stats
           });
@@ -169,5 +188,62 @@ export class SimpleChatConnector {
 
   async clearSession(sessionId: string): Promise<void> {
     await this.sessionManager.clearSession(sessionId);
+  }
+
+  /**
+   * Inicia verificação periódica de conexões SSE
+   * Se não há conexões ativas, desconecta do chat para economizar recursos
+   */
+  private startConnectionCheck(): void {
+    if (this.connectionCheckInterval) {
+      return; // Já está rodando
+    }
+
+    this.connectionCheckInterval = setInterval(() => {
+      this.checkAndDisconnectInactiveChannels();
+    }, 30000); // Verificar a cada 30 segundos
+
+    console.log('🔄 Verificação periódica de conexões SSE iniciada');
+  }
+
+  /**
+   * Para a verificação periódica de conexões
+   */
+  private stopConnectionCheck(): void {
+    if (this.connectionCheckInterval) {
+      clearInterval(this.connectionCheckInterval);
+      this.connectionCheckInterval = null;
+      console.log('⏹️ Verificação periódica de conexões SSE parada');
+    }
+  }
+
+  /**
+   * Verifica sessões sem conexões SSE ativas e desconecta os canais
+   */
+  private async checkAndDisconnectInactiveChannels(): Promise<void> {
+    const channelsToDisconnect: string[] = [];
+
+    // Verificar cada sessionId para ver se tem conexões SSE ativas
+    for (const [sessionId, channelName] of this.sessionToChannel.entries()) {
+      const activeConnections = getActiveConnectionsCount(sessionId);
+      
+      if (activeConnections === 0) {
+        console.log(`🔌 Sessão ${sessionId} (canal ${channelName}) sem conexões SSE ativas, marcando para desconexão`);
+        channelsToDisconnect.push(channelName);
+        this.sessionToChannel.delete(sessionId); // Remover mapeamento
+      }
+    }
+
+    // Desconectar canais inativos
+    for (const channel of channelsToDisconnect) {
+      await this.disconnectFromChannel(channel);
+      console.log(`💤 Canal ${channel} desconectado por inatividade`);
+    }
+
+    // Se não há mais conexões, parar a verificação
+    if (this.connections.size === 0) {
+      this.stopConnectionCheck();
+      console.log('💤 Todas as conexões de chat foram desconectadas');
+    }
   }
 }
