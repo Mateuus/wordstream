@@ -124,6 +124,7 @@ export const VirtualizedWordList: React.FC<VirtualizedWordListProps> = React.mem
   onExcludeWord,
   onUnbanWord,
   height = 400,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   itemHeight = 60
 }) => {
   // Calcular o máximo de contagem para normalizar as barras de progresso
