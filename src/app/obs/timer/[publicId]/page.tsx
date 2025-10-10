@@ -160,7 +160,7 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
         }
         
         html, body {
-          background: white !important;
+          background: transparent !important;
           font-family: 'Arial', sans-serif !important;
           overflow: hidden;
           margin: 0;
@@ -168,7 +168,7 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
         }
         
         #__next {
-          background: white !important;
+          background: transparent !important;
           margin: 0;
           padding: 0;
         }
@@ -244,8 +244,8 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
       `}</style>
       
       <div style={{
-        background: 'white',
-        color: 'black',
+        background: 'transparent',
+        color: 'white',
         fontFamily: 'Arial, sans-serif',
         padding: '15px',
         minHeight: '100vh',
