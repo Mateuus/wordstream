@@ -4,7 +4,6 @@ module.exports = {
       name: 'wordstream-pwa',
       script: 'npm',
       args: 'start',
-      cwd: '/home/mateuus/bdj/wordstream',
       instances: '2',
       exec_mode: 'cluster',
       env: {
