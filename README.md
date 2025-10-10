@@ -40,14 +40,33 @@ npm run dev
 ### Produção com PM2
 
 ```bash
-# Configurar PM2 (primeira vez)
-./scripts/pm2-setup.sh
+# Configurar ambiente de produção (primeira vez)
+npm run setup:production
 
-# Iniciar aplicativo em produção
+# Reiniciar aplicativo em produção (recomendado)
+npm run restart:production
+
+# Ou iniciar diretamente
 npm run pm2:start:prod
 
 # Monitorar aplicativo
 npm run pm2:monit
+```
+
+### Configuração Manual de Produção
+
+```bash
+# Copiar configurações de produção
+cp env.production .env.production
+
+# Editar variáveis de ambiente
+nano .env.production
+
+# Build para produção
+npm run build:production
+
+# Iniciar com PM2
+npm run pm2:start:prod
 ```
 
 ## 🎯 Comandos PM2
@@ -196,11 +215,22 @@ public/
 ### Scripts Úteis
 
 ```bash
-npm run dev              # Desenvolvimento
-npm run build            # Build para produção
-npm run start            # Iniciar servidor
+# Desenvolvimento
+npm run dev              # Servidor de desenvolvimento
 npm run lint             # Linting
+
+# Produção
+npm run setup:production # Configurar ambiente de produção
+npm run build:production # Build otimizado para produção
+npm run start:production # Iniciar servidor de produção
+
+# PWA
 npm run generate-icons   # Gerar ícones PWA
+
+# PM2
+npm run pm2:start:prod   # Iniciar com PM2 em produção
+npm run pm2:monit        # Monitoramento em tempo real
+npm run pm2:logs         # Ver logs
 ```
 
 ## 📚 Documentação Adicional

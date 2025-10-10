@@ -8,11 +8,9 @@ module.exports = {
       instances: 'max',
       exec_mode: 'cluster',
       env: {
-        NODE_ENV: 'production',
-        PORT: 3500,
-        REDIS_URL: 'redis://192.168.5.210:6379',
-        NEXT_PUBLIC_APP_URL: 'http://contador.bdjcoins.com',
-        NEXT_PUBLIC_BASE_URL: 'http://contador.bdjcoins.com'
+        NODE_ENV: 'development',
+        PORT: 3000,
+        REDIS_URL: 'redis://192.168.5.210:6379'
       },
       env_development: {
         NODE_ENV: 'development',
@@ -23,6 +21,13 @@ module.exports = {
         NODE_ENV: 'staging',
         PORT: 3001,
         REDIS_URL: 'redis://192.168.5.210:6379'
+      },
+      env_production: {
+        NODE_ENV: 'production',
+        PORT: 3500,
+        REDIS_URL: 'redis://192.168.5.210:6379',
+        NEXT_PUBLIC_APP_URL: 'http://contador.bdjcoins.com',
+        NEXT_PUBLIC_BASE_URL: 'http://contador.bdjcoins.com'
       },
       log_file: './logs/combined.log',
       out_file: './logs/out.log',
