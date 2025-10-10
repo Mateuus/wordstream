@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -9,6 +10,10 @@ interface BeforeInstallPromptEvent extends Event {
     platform: string;
   }>;
   prompt(): Promise<void>;
+}
+
+interface NavigatorWithStandalone extends Navigator {
+  standalone?: boolean;
 }
 
 export default function PWAInstallPrompt() {
@@ -25,7 +30,7 @@ export default function PWAInstallPrompt() {
       }
       
       // Verifica se está em modo standalone no iOS
-      if ((window.navigator as any).standalone === true) {
+      if ((window.navigator as NavigatorWithStandalone).standalone === true) {
         setIsInstalled(true);
         return;
       }
@@ -86,9 +91,11 @@ export default function PWAInstallPrompt() {
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4">
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
-            <img 
+            <Image 
               src="/icons/icon-72x72.png" 
               alt="WordStream" 
+              width={48}
+              height={48}
               className="w-12 h-12 rounded-lg"
             />
           </div>

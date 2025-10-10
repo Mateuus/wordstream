@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import PWAInstallPrompt from '@/components/PWAInstallPrompt'
+import PWAInstallPrompt from '../components/PWAInstallPrompt'
 
 const inter = Inter({ 
   subsets: ['latin'],
