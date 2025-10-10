@@ -2,11 +2,19 @@
 const activeConnections = new Map<string, ReadableStreamDefaultController[]>();
 
 export function registerConnection(channel: string, controller: ReadableStreamDefaultController) {
+  console.log(`🔌 Registrando conexão SSE para canal: ${channel}`);
+  
   if (!activeConnections.has(channel)) {
     activeConnections.set(channel, []);
+    console.log(`📝 Criando nova lista de conexões para canal: ${channel}`);
   }
-  activeConnections.get(channel)!.push(controller);
-  console.log(`🔌 Conexão SSE registrada para canal: ${channel}`);
+  
+  const connections = activeConnections.get(channel)!;
+  connections.push(controller);
+  
+  console.log(`✅ Conexão SSE registrada para canal: ${channel}`);
+  console.log(`📊 Total de conexões ativas para ${channel}: ${connections.length}`);
+  console.log(`📋 Todas as conexões ativas:`, Array.from(activeConnections.keys()));
 }
 
 export function unregisterConnection(channel: string, controller: ReadableStreamDefaultController) {
