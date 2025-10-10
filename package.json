@@ -6,20 +6,24 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate-icons": "node scripts/generate-icons.js"
   },
   "dependencies": {
     "@types/react-window": "^1.8.8",
     "autoprefixer": "^10.4.21",
     "nanoid": "^5.1.6",
     "next": "15.5.4",
+    "next-pwa": "^5.6.0",
     "node-fetch": "^3.3.2",
     "postcss": "^8.5.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-window": "^2.2.0",
     "redis": "^5.8.3",
+    "sharp": "^0.34.4",
     "tmi.js": "^1.8.5",
+    "workbox-webpack-plugin": "^7.3.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
