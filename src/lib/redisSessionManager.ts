@@ -44,6 +44,9 @@ export class RedisSessionManager {
       this.redis.connect().then(() => {
         this.redisAvailable = true;
         console.log('Redis connected successfully');
+        
+        // Tentar sincronizar sessões do cache local com Redis
+        this.syncLocalSessionsToRedis();
       }).catch(() => {
         this.redisAvailable = false;
         console.log('Redis connection failed, using in-memory storage');
@@ -87,26 +90,35 @@ export class RedisSessionManager {
     };
 
     try {
+      // Sempre salvar no cache local primeiro
+      this.sessions.set(sessionId, sessionData);
+      
       // Tentar salvar no Redis se disponível
       if (this.redis && this.redisAvailable) {
-        await this.redis.setEx(
-          `session:${sessionId}`, 
-          this.TTL, 
-          JSON.stringify({
-            ...sessionData,
-            wordCounts: Array.from(sessionData.wordCounts.entries())
-          })
-        );
+        try {
+          await this.redis.setEx(
+            `session:${sessionId}`, 
+            this.TTL, 
+            JSON.stringify({
+              ...sessionData,
+              wordCounts: Array.from(sessionData.wordCounts.entries())
+            })
+          );
 
-        // Salvar mapeamento publicId -> sessionId
-        await this.redis.setEx(`public:${publicId}`, this.TTL, sessionId);
-        
-        // Salvar mapeamento adminKey -> sessionId
-        await this.redis.setEx(`admin:${adminKey}`, this.TTL, sessionId);
+          // Salvar mapeamento publicId -> sessionId
+          await this.redis.setEx(`public:${publicId}`, this.TTL, sessionId);
+          
+          // Salvar mapeamento adminKey -> sessionId
+          await this.redis.setEx(`admin:${adminKey}`, this.TTL, sessionId);
+          
+          console.log(`Session ${sessionId} created successfully in Redis`);
+        } catch (redisError) {
+          console.error('Redis error during session creation:', redisError);
+          // Continuar mesmo se Redis falhar
+        }
+      } else {
+        console.log(`Session ${sessionId} created in local cache only (Redis not available)`);
       }
-      
-      // Cache local (sempre funciona)
-      this.sessions.set(sessionId, sessionData);
       
       return { sessionId, publicId, adminKey };
     } catch (error) {
@@ -147,24 +159,61 @@ export class RedisSessionManager {
 
   async getSessionByPublicId(publicId: string): Promise<SessionData | null> {
     try {
+      console.log(`🔍 Buscando sessão com publicId: ${publicId}`);
+      console.log(`📊 Estado Redis: ${this.redisAvailable ? 'Disponível' : 'Indisponível'}`);
+      
       // Tentar buscar no Redis primeiro
       if (this.redis && this.redisAvailable) {
-        const sessionId = await this.redis.get(`public:${publicId}`);
-        if (sessionId) {
-          return await this.getSession(sessionId);
+        try {
+          const sessionId = await this.redis.get(`public:${publicId}`);
+          console.log(`🔑 SessionId encontrado no Redis: ${sessionId}`);
+          if (sessionId) {
+            const session = await this.getSession(sessionId);
+            if (session) {
+              console.log(`✅ Sessão encontrada no Redis: ${session.id}`);
+              return session;
+            }
+          }
+        } catch (redisError) {
+          console.error('❌ Erro Redis durante getSessionByPublicId:', redisError);
+          // Continuar para fallback local
         }
       }
       
       // Fallback: buscar no cache local
+      console.log(`🔍 Buscando no cache local... Total de sessões: ${this.sessions.size}`);
       for (const session of this.sessions.values()) {
+        console.log(`📋 Verificando sessão: ${session.id} (publicId: ${session.publicId})`);
         if (session.publicId === publicId) {
+          console.log(`✅ Sessão encontrada no cache local: ${session.id}`);
+          
+          // Tentar sincronizar com Redis se estiver disponível agora
+          if (this.redis && this.redisAvailable) {
+            try {
+              console.log(`🔄 Sincronizando sessão ${session.id} com Redis...`);
+              await this.redis.setEx(
+                `session:${session.id}`, 
+                this.TTL, 
+                JSON.stringify({
+                  ...session,
+                  wordCounts: Array.from(session.wordCounts.entries())
+                })
+              );
+              await this.redis.setEx(`public:${publicId}`, this.TTL, session.id);
+              console.log(`✅ Sessão sincronizada com Redis`);
+            } catch (syncError) {
+              console.error('❌ Erro ao sincronizar com Redis:', syncError);
+            }
+          }
+          
           return session;
         }
       }
       
+      console.log(`❌ Sessão não encontrada para publicId: ${publicId}`);
       return null;
     } catch (error) {
-      console.error('Error getting session by public ID:', error);
+      console.error('❌ Erro ao buscar sessão por public ID:', error);
       return null;
     }
   }
@@ -394,5 +443,41 @@ export class RedisSessionManager {
       console.error('Error checking session status by public ID:', error);
       return false;
     }
+  }
+
+  /**
+   * Sincroniza todas as sessões do cache local com Redis quando Redis fica disponível
+   */
+  private async syncLocalSessionsToRedis(): Promise<void> {
+    if (!this.redis || !this.redisAvailable || this.sessions.size === 0) {
+      return;
+    }
+
+    console.log(`🔄 Sincronizando ${this.sessions.size} sessões do cache local com Redis...`);
+    
+    for (const [sessionId, session] of this.sessions.entries()) {
+      try {
+        // Verificar se a sessão já existe no Redis
+        const exists = await this.redis.exists(`session:${sessionId}`);
+        if (exists === 0) {
+          // Sessão não existe no Redis, sincronizar
+          await this.redis.setEx(
+            `session:${sessionId}`, 
+            this.TTL, 
+            JSON.stringify({
+              ...session,
+              wordCounts: Array.from(session.wordCounts.entries())
+            })
+          );
+          await this.redis.setEx(`public:${session.publicId}`, this.TTL, sessionId);
+          await this.redis.setEx(`admin:${session.adminKey}`, this.TTL, sessionId);
+          console.log(`✅ Sessão ${sessionId} sincronizada com Redis`);
+        }
+      } catch (error) {
+        console.error(`❌ Erro ao sincronizar sessão ${sessionId}:`, error);
+      }
+    }
+    
+    console.log(`✅ Sincronização concluída`);
   }
 }

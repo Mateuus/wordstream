@@ -44,7 +44,7 @@ interface SimpleSSEContextType {
   connectionStatus: ConnectionStatus | null;
   messages: ChatMessage[];
   sessionId: string | null;
-  connectToChannel: (channel: string, platform?: 'twitch' | 'kick') => Promise<void>;
+  connectToChannel: (channel: string, platform?: 'twitch' | 'kick', existingSessionId?: string) => Promise<void>;
   clearSession: () => Promise<void>;
   clearMessages: () => void;
 }
@@ -65,14 +65,14 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
   
   const eventSourceRef = useRef<EventSource | null>(null);
 
-  const connectToChannel = useCallback(async (channel: string, platform: 'twitch' | 'kick' = 'twitch') => {
+  const connectToChannel = useCallback(async (channel: string, platform: 'twitch' | 'kick' = 'twitch', existingSessionId?: string) => {
     setIsLoading(true);
     try {
-      // Conectar ao canal via API
+      // Conectar ao canal via API usando a sessão existente se fornecida
       const response = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel, platform })
+        body: JSON.stringify({ channel, platform, sessionId: existingSessionId })
       });
 
       if (response.ok) {

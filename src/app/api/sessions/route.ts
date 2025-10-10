@@ -7,7 +7,7 @@ const chatConnector = SimpleChatConnector.getInstance();
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { channel, platform = 'twitch' } = body;
+    const { channel, platform = 'twitch', sessionId } = body;
 
     if (!channel) {
       return NextResponse.json({ 
@@ -21,11 +21,11 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Conectar ao canal
-    const sessionId = await chatConnector.connectToChannel(channel, platform);
+    // Conectar ao canal usando a sessão existente se fornecida
+    const connectedSessionId = await chatConnector.connectToChannel(channel, platform, sessionId);
     
     return NextResponse.json({ 
-      sessionId,
+      sessionId: connectedSessionId,
       channel,
       platform,
       message: `Connected to ${platform} channel: ${channel}`

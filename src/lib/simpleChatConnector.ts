@@ -1,6 +1,6 @@
 import tmi from 'tmi.js';
 import { broadcastToChannel } from './simpleSSEManager';
-import { SimpleSessionManager } from './simpleSessionManager';
+import { RedisSessionManager } from './redisSessionManager';
 
 interface ChatMessage {
   id: string;
@@ -14,7 +14,7 @@ interface ChatMessage {
 export class SimpleChatConnector {
   private static instance: SimpleChatConnector;
   private connections = new Map<string, tmi.Client>();
-  private sessionManager = SimpleSessionManager.getInstance();
+  private sessionManager = RedisSessionManager.getInstance();
 
   static getInstance(): SimpleChatConnector {
     if (!SimpleChatConnector.instance) {
@@ -23,10 +23,15 @@ export class SimpleChatConnector {
     return SimpleChatConnector.instance;
   }
 
-  async connectToChannel(channel: string, platform: 'twitch' | 'kick' = 'twitch'): Promise<string> {
+  async connectToChannel(channel: string, platform: 'twitch' | 'kick' = 'twitch', existingSessionId?: string): Promise<string> {
     try {
-      // Criar sessão para o canal
-      const sessionId = this.sessionManager.createSession(channel, platform);
+      let sessionId = existingSessionId;
+      
+      // Se não foi fornecido um sessionId, criar uma nova sessão
+      if (!sessionId) {
+        const sessionData = await this.sessionManager.createSession(channel, platform, 'chat-connector');
+        sessionId = sessionData.sessionId;
+      }
       
       if (platform === 'twitch') {
         await this.connectToTwitch(channel, sessionId);
@@ -52,7 +57,7 @@ export class SimpleChatConnector {
         channels: [channel]
       });
 
-      client.on('message', (channel: string, tags: unknown, message: string, self: boolean) => {
+      client.on('message', async (channel: string, tags: unknown, message: string, self: boolean) => {
         if (self) return;
 
         const chatMessage: ChatMessage = {
@@ -64,7 +69,7 @@ export class SimpleChatConnector {
           channel: channel.replace('#', '')
         };
 
-        this.processMessage(sessionId, chatMessage);
+        await this.processMessage(sessionId, chatMessage);
       });
 
       client.on('connected', () => {
@@ -96,8 +101,10 @@ export class SimpleChatConnector {
     }
   }
 
-  private processMessage(sessionId: string, message: ChatMessage): void {
+  private async processMessage(sessionId: string, message: ChatMessage): Promise<void> {
     try {
+      console.log(`📨 Processando mensagem: "${message.message}" de ${message.username} para sessão ${sessionId}`);
+      
       // Enviar mensagem via SSE para o frontend
       broadcastToChannel(message.channel, {
         type: 'chatMessage',
@@ -107,16 +114,22 @@ export class SimpleChatConnector {
       // Processar primeira palavra da mensagem
       const firstWord = this.extractFirstWord(message.message);
       if (firstWord) {
-        this.sessionManager.processWord(sessionId, firstWord);
+        console.log(`🔤 Primeira palavra extraída: "${firstWord}"`);
+        await this.sessionManager.processWord(sessionId, firstWord);
         
         // Enviar atualização de palavras via SSE
-        const stats = this.sessionManager.getSessionStats(sessionId);
+        const stats = await this.sessionManager.getSessionStats(sessionId);
         if (stats) {
+          console.log(`📊 Stats atualizadas: ${stats.totalWords} palavras totais, ${stats.uniqueWords} únicas`);
           broadcastToChannel(message.channel, {
             type: 'wordUpdate',
             stats: stats
           });
+        } else {
+          console.log(`❌ Stats não encontradas para sessão ${sessionId}`);
         }
+      } else {
+        console.log(`🚫 Nenhuma palavra válida extraída de: "${message.message}"`);
       }
     } catch (error) {
       console.error('Erro ao processar mensagem:', error);
@@ -150,11 +163,11 @@ export class SimpleChatConnector {
     }
   }
 
-  getSessionStats(sessionId: string) {
-    return this.sessionManager.getSessionStats(sessionId);
+  async getSessionStats(sessionId: string) {
+    return await this.sessionManager.getSessionStats(sessionId);
   }
 
-  clearSession(sessionId: string): boolean {
-    return this.sessionManager.clearSession(sessionId);
+  async clearSession(sessionId: string): Promise<void> {
+    await this.sessionManager.clearSession(sessionId);
   }
 }

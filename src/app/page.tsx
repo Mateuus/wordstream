@@ -36,11 +36,30 @@ export default function Home() {
       setResult(data);
       
       if (response.ok) {
-        // Redirecionar para a sessão criada
-        window.location.href = data.shareUrl;
+        // Aguardar um pouco antes de redirecionar para garantir que a sessão foi criada
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Verificar se a sessão existe antes de redirecionar
+        const sessionCheck = await fetch(`/api/session/${data.publicId}`);
+        if (sessionCheck.ok) {
+          window.location.href = data.shareUrl;
+        } else {
+          // Se não encontrou, tentar novamente após mais tempo
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          const retryCheck = await fetch(`/api/session/${data.publicId}`);
+          if (retryCheck.ok) {
+            window.location.href = data.shareUrl;
+          } else {
+            setResult({ 
+              error: 'Sessão criada mas não foi possível acessá-la. Tente novamente em alguns segundos.',
+              shareUrl: data.shareUrl 
+            });
+          }
+        }
       }
-    } catch {
-      setResult({ error: 'Erro ao criar sessão' });
+    } catch (error) {
+      console.error('Erro ao criar sessão:', error);
+      setResult({ error: 'Erro ao criar sessão. Verifique sua conexão e tente novamente.' });
     } finally {
       setIsLoading(false);
     }
@@ -337,7 +356,14 @@ export default function Home() {
                 disabled={isLoading || !channel.trim()}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-lg font-semibold transition-colors"
               >
-                {isLoading ? 'Criando...' : '🚀 Criar Sessão'}
+                {isLoading ? (
+                  <span className="flex items-center justify-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Criando e verificando sessão...</span>
+                  </span>
+                ) : (
+                  '🚀 Criar Sessão'
+                )}
               </button>
             </div>
           </div>

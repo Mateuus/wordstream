@@ -56,9 +56,9 @@ function SessionPageContent({ params }: SessionPageProps) {
           setSessionData(data);
           setError(null);
           
-          // Conectar automaticamente ao chat quando a sessão for carregada
-          console.log('Sessão carregada, conectando ao chat:', data.channel, data.platform);
-          await connectToChannel(data.channel, data.platform);
+          // Conectar automaticamente ao chat quando a sessão for carregada usando o sessionId existente
+          console.log('Sessão carregada, conectando ao chat:', data.channel, data.platform, 'SessionId:', data.sessionId);
+          await connectToChannel(data.channel, data.platform, data.sessionId);
         } else {
           const errorData = await response.json();
           setError(errorData.error || 'Sessão não encontrada');
@@ -89,7 +89,7 @@ function SessionPageContent({ params }: SessionPageProps) {
   const handleConnect = async () => {
     if (!sessionData) return;
     console.log('Conectando ao canal:', sessionData.channel, sessionData.platform);
-    await connectToChannel(sessionData.channel, sessionData.platform);
+    await connectToChannel(sessionData.channel, sessionData.platform, sessionData.sessionId);
   };
 
 
