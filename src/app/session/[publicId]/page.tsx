@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useSimpleSSE, SimpleSSEProvider } from '@/src/contexts/SimpleSSEContext';
 
 interface SessionPageProps {
@@ -17,10 +18,14 @@ export default function SessionPage({ params }: SessionPageProps) {
 
 function SessionPageContent({ params }: SessionPageProps) {
   const [publicId, setPublicId] = useState<string>('');
-  const [sessionData, setSessionData] = useState<any>(null);
+  const [sessionData, setSessionData] = useState<{
+    channel: string;
+    platform: 'twitch' | 'kick';
+    sessionId: string;
+    publicId: string;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showConfigModal, setShowConfigModal] = useState(false);
   
   const {
     sessionStats,
@@ -50,19 +55,24 @@ function SessionPageContent({ params }: SessionPageProps) {
           const data = await response.json();
           setSessionData(data);
           setError(null);
+          
+          // Conectar automaticamente ao chat quando a sessão for carregada
+          console.log('Sessão carregada, conectando ao chat:', data.channel, data.platform);
+          await connectToChannel(data.channel, data.platform);
         } else {
           const errorData = await response.json();
           setError(errorData.error || 'Sessão não encontrada');
         }
-      } catch (err) {
+      } catch (error) {
         setError('Erro ao carregar sessão');
+        console.error('Erro ao carregar sessão:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadSession();
-  }, [publicId]);
+  }, [publicId, connectToChannel]);
 
   // Auto-scroll para a última mensagem apenas dentro do container do chat
   useEffect(() => {
@@ -78,13 +88,10 @@ function SessionPageContent({ params }: SessionPageProps) {
 
   const handleConnect = async () => {
     if (!sessionData) return;
+    console.log('Conectando ao canal:', sessionData.channel, sessionData.platform);
     await connectToChannel(sessionData.channel, sessionData.platform);
   };
 
-  const handleDisconnect = async () => {
-    // Implementar desconexão se necessário
-    console.log('Desconectar da sessão');
-  };
 
   // Loading state
   if (isLoading) {
@@ -110,12 +117,12 @@ function SessionPageContent({ params }: SessionPageProps) {
           <p className="text-gray-400 mb-6">
             {error}
           </p>
-          <a
+          <Link
             href="/"
             className="inline-block bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg transition-colors"
           >
             ← Voltar ao início
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -135,12 +142,6 @@ function SessionPageContent({ params }: SessionPageProps) {
                   {isConnected ? 'Conectado' : 'Desconectado'}
                 </span>
               </div>
-              <button
-                onClick={() => setShowConfigModal(true)}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
-              >
-                ⚙️ Config
-              </button>
             </div>
             <h1 className="text-lg font-bold mb-2">
               WordStream - {sessionData?.channel}
@@ -186,12 +187,6 @@ function SessionPageContent({ params }: SessionPageProps) {
             </div>
             
             <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setShowConfigModal(true)}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
-              >
-                ⚙️ Configurações
-              </button>
               <button
                 onClick={clearMessages}
                 className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm transition-colors"
