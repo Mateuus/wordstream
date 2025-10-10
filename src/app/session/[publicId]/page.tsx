@@ -7,6 +7,7 @@ import { SettingsModal } from '../../../components/SettingsModal';
 import { TimerController } from '../../../components/TimerController';
 import { WinnerDisplay } from '../../../components/WinnerDisplay';
 import { VirtualizedWordList } from '../../../components/VirtualizedWordList';
+import { ObsOverlayModal } from '../../../components/ObsOverlayModal';
 
 interface SessionPageProps {
   params: Promise<{ publicId: string }>;
@@ -35,6 +36,7 @@ function SessionPageContent({ params }: SessionPageProps) {
   const [password, setPassword] = useState<string>('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showObsModal, setShowObsModal] = useState(false);
   
   const {
     sessionStats,
@@ -308,6 +310,12 @@ function SessionPageContent({ params }: SessionPageProps) {
               >
                 ⚙️
               </button>
+              <button
+                onClick={() => setShowObsModal(true)}
+                className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs transition-colors"
+              >
+                🎬 OBS
+              </button>
             </div>
           </div>
           
@@ -343,6 +351,12 @@ function SessionPageContent({ params }: SessionPageProps) {
                 className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
               >
                 ⚙️ Configurações
+              </button>
+              <button
+                onClick={() => setShowObsModal(true)}
+                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded text-sm transition-colors"
+              >
+                🎬 Overlays OBS
               </button>
             </div>
           </div>
@@ -689,6 +703,12 @@ function SessionPageContent({ params }: SessionPageProps) {
       <SettingsModal 
         isOpen={showSettings} 
         onClose={() => setShowSettings(false)} 
+      />
+      <ObsOverlayModal
+        isOpen={showObsModal}
+        onClose={() => setShowObsModal(false)}
+        publicId={publicId}
+        channel={sessionData?.channel}
       />
       <WinnerDisplay />
     </div>
