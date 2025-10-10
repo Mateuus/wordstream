@@ -17,6 +17,7 @@ export interface WinnerData {
 export class TimerManager {
   private static instance: TimerManager;
   private timers = new Map<string, NodeJS.Timeout>();
+  private updateIntervals = new Map<string, NodeJS.Timeout>();
   private redisSessionManager = RedisSessionManager.getInstance();
 
   static getInstance(): TimerManager {
@@ -39,12 +40,33 @@ export class TimerManager {
       }
     });
     
+    // Notificar início do timer
+    await this.notifyTimerUpdate(sessionId, {
+      isActive: true,
+      remainingTime: duration,
+      duration
+    });
+    
     // Configurar timeout para finalizar automaticamente
     const timeout = setTimeout(async () => {
       await this.finishTimer(sessionId);
     }, duration * 1000);
     
     this.timers.set(sessionId, timeout);
+    
+    // Configurar intervalo para atualizações periódicas
+    const updateInterval = setInterval(async () => {
+      const remainingTime = await this.getRemainingTime(sessionId);
+      if (remainingTime > 0) {
+        await this.notifyTimerUpdate(sessionId, {
+          isActive: true,
+          remainingTime,
+          duration
+        });
+      }
+    }, 1000); // Atualizar a cada segundo
+    
+    this.updateIntervals.set(sessionId, updateInterval);
     
     console.log(`Timer started for session ${sessionId}: ${duration}s`);
   }
@@ -56,9 +78,18 @@ export class TimerManager {
       this.timers.delete(sessionId);
     }
     
+    const updateInterval = this.updateIntervals.get(sessionId);
+    if (updateInterval) {
+      clearInterval(updateInterval);
+      this.updateIntervals.delete(sessionId);
+    }
+    
     await this.redisSessionManager.updateSession(sessionId, {
       timer: undefined
     });
+    
+    // Notificar parada do timer
+    await this.notifyTimerUpdate(sessionId, null);
     
     console.log(`Timer stopped for session ${sessionId}`);
   }
@@ -115,6 +146,17 @@ export class TimerManager {
     } catch (error) {
       console.error('Error finishing timer:', error);
     }
+  }
+
+  private async notifyTimerUpdate(sessionId: string, timer: { isActive: boolean; remainingTime: number; duration: number } | null): Promise<void> {
+    const eventData = {
+      type: 'timerUpdate',
+      sessionId,
+      timer,
+      timestamp: Date.now()
+    };
+    
+    broadcastToChannel(sessionId, eventData);
   }
 
   private async notifyTimerFinished(sessionId: string, winner: WinnerData): Promise<void> {

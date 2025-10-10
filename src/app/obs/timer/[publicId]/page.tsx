@@ -88,16 +88,24 @@ interface TimerOverlayComponentProps {
   duration: number;
 }
 
-const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({ duration }) => {
-  const { sessionStats } = useSimpleSSE();
+const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
+  const { timer, winner, isConnected } = useSimpleSSE();
   const [showResult, setShowResult] = useState(false);
   const [resultTimeout, setResultTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [timerState, setTimerState] = useState({
-    isStarted: false,
-    isFinished: false,
-    remainingTime: duration,
-    hasShownResult: false
-  });
+  const [hasShownResult, setHasShownResult] = useState(false);
+
+  // Debug: Log do estado do timer (apenas em desenvolvimento)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Timer Overlay Debug:', {
+        timer,
+        winner,
+        showResult,
+        hasShownResult,
+        isConnected
+      });
+    }
+  }, [timer, winner, showResult, hasShownResult, isConnected]);
 
   // Formatar tempo para exibição
   const formatTime = (seconds: number): string => {
@@ -106,44 +114,11 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({ duration 
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Auto-start do timer (para demonstração - em produção seria controlado externamente)
+  // Mostrar resultado quando timer finalizar e há um vencedor
   useEffect(() => {
-    if (!timerState.isStarted && !timerState.isFinished) {
-      // Aguarda 2 segundos antes de iniciar automaticamente
-      const autoStartTimeout = setTimeout(() => {
-        setTimerState(prev => ({ ...prev, isStarted: true }));
-        
-        // Iniciar contagem regressiva
-        const timerInterval = setInterval(() => {
-          setTimerState(prev => {
-            if (prev.remainingTime <= 1) {
-              clearInterval(timerInterval);
-              return {
-                ...prev,
-                isFinished: true,
-                remainingTime: 0
-              };
-            }
-            return {
-              ...prev,
-              remainingTime: prev.remainingTime - 1
-            };
-          });
-        }, 1000);
-
-        // Cleanup
-        return () => clearInterval(timerInterval);
-      }, 2000);
-
-      return () => clearTimeout(autoStartTimeout);
-    }
-  }, [timerState.isStarted, timerState.isFinished]);
-
-  // Mostrar resultado quando timer finalizar
-  useEffect(() => {
-    if (timerState.isFinished && !timerState.hasShownResult) {
+    if (winner && !hasShownResult) {
       setShowResult(true);
-      setTimerState(prev => ({ ...prev, hasShownResult: true }));
+      setHasShownResult(true);
       
       // Esconder resultado após 5 segundos
       const timeout = setTimeout(() => {
@@ -151,7 +126,19 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({ duration 
       }, 5000);
       setResultTimeout(timeout);
     }
-  }, [timerState.isFinished, timerState.hasShownResult]);
+  }, [winner, hasShownResult]);
+
+  // Reset do resultado quando timer reinicia
+  useEffect(() => {
+    if (timer?.isActive) {
+      setHasShownResult(false);
+      setShowResult(false);
+      if (resultTimeout) {
+        clearTimeout(resultTimeout);
+        setResultTimeout(null);
+      }
+    }
+  }, [timer?.isActive, resultTimeout]);
 
   // Cleanup do timeout
   useEffect(() => {
@@ -162,7 +149,6 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({ duration 
     };
   }, [resultTimeout]);
 
-  const topWords = sessionStats?.topWords?.slice(0, 3) || [];
 
   return (
     <>
@@ -242,26 +228,48 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({ duration 
         position: 'relative'
       }}>
         
-        {/* Timer Display - só aparece quando iniciado */}
-        {timerState.isStarted && !timerState.isFinished && (
+        {/* Debug Info - apenas em desenvolvimento */}
+        {process.env.NODE_ENV === 'development' && (
+          <div style={{
+            position: 'absolute',
+            top: '10px',
+            left: '10px',
+            background: 'rgba(0, 0, 0, 0.7)',
+            color: 'white',
+            padding: '5px 10px',
+            borderRadius: '5px',
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            zIndex: 1000
+          }}>
+            Timer: {timer ? `${timer.isActive ? 'ATIVO' : 'INATIVO'} - ${timer.remainingTime}s` : 'NULL'}
+            <br />
+            Connected: {isConnected ? 'SIM' : 'NÃO'}
+            <br />
+            Winner: {winner ? winner.word : 'NENHUM'}
+          </div>
+        )}
+
+        {/* Timer Display - só aparece quando timer está ativo */}
+        {timer?.isActive && (
           <div 
             className="timer-display"
             style={{
               fontSize: '48px',
               fontWeight: 'bold',
-              color: timerState.remainingTime <= 10 ? '#ff4444' : '#00ff00',
+              color: timer.remainingTime <= 10 ? '#ff4444' : '#00ff00',
               textShadow: '3px 3px 6px rgba(0, 0, 0, 0.8)',
               background: 'rgba(0, 0, 0, 0.4)',
               padding: '20px 30px',
               borderRadius: '15px',
-              border: `3px solid ${timerState.remainingTime <= 10 ? '#ff4444' : '#00ff00'}`,
+              border: `3px solid ${timer.remainingTime <= 10 ? '#ff4444' : '#00ff00'}`,
               backdropFilter: 'blur(10px)',
               marginBottom: '20px',
               textAlign: 'center',
               minWidth: '200px'
             }}
           >
-            {formatTime(timerState.remainingTime)}
+            {formatTime(timer.remainingTime)}
           </div>
         )}
 
@@ -294,71 +302,68 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({ duration 
               🏆 RESULTADO FINAL 🏆
             </div>
 
-            {topWords.length > 0 ? (
+            {winner ? (
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '10px',
                 minWidth: '300px'
               }}>
-                {topWords.map((wordCount, index) => (
-                  <div
-                    key={wordCount.word}
-                    className="word-item"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      background: index === 0 ? 'rgba(255, 215, 0, 0.3)' : 'rgba(255, 255, 255, 0.2)',
-                      padding: '12px 20px',
-                      borderRadius: '10px',
-                      border: index === 0 ? '2px solid #FFD700' : '1px solid rgba(255, 255, 255, 0.3)',
-                      backdropFilter: 'blur(5px)'
-                    }}
-                  >
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '15px'
-                    }}>
-                      <div style={{
-                        fontSize: '20px',
-                        fontWeight: 'bold',
-                        color: index === 0 ? '#FFD700' : '#ffffff',
-                        minWidth: '30px',
-                        textAlign: 'center'
-                      }}>
-                        {index === 0 && <span className="winner-crown">👑</span>}
-                        #{index + 1}
-                      </div>
-                      
-                      <div style={{
-                        fontSize: '18px',
-                        fontWeight: 'bold',
-                        color: '#8B4513',
-                        maxWidth: '200px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {wordCount.word}
-                      </div>
-                    </div>
-                    
+                <div
+                  className="word-item"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'rgba(255, 215, 0, 0.3)',
+                    padding: '12px 20px',
+                    borderRadius: '10px',
+                    border: '2px solid #FFD700',
+                    backdropFilter: 'blur(5px)'
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '15px'
+                  }}>
                     <div style={{
                       fontSize: '20px',
                       fontWeight: 'bold',
-                      color: '#8B4513',
-                      background: 'rgba(255, 255, 255, 0.3)',
-                      padding: '5px 15px',
-                      borderRadius: '15px',
-                      minWidth: '50px',
+                      color: '#FFD700',
+                      minWidth: '30px',
                       textAlign: 'center'
                     }}>
-                      {wordCount.count}
+                      <span className="winner-crown">👑</span>
+                      #1
+                    </div>
+                    
+                    <div style={{
+                      fontSize: '18px',
+                      fontWeight: 'bold',
+                      color: '#8B4513',
+                      maxWidth: '200px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {winner.word}
                     </div>
                   </div>
-                ))}
+                  
+                  <div style={{
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    color: '#8B4513',
+                    background: 'rgba(255, 255, 255, 0.3)',
+                    padding: '5px 15px',
+                    borderRadius: '15px',
+                    minWidth: '50px',
+                    textAlign: 'center'
+                  }}>
+                    {winner.count}
+                  </div>
+                </div>
               </div>
             ) : (
               <div style={{
@@ -372,18 +377,8 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = ({ duration 
           </div>
         )}
 
-        {/* Estado inicial - manter em branco para live */}
-        {!timerState.isStarted && !timerState.isFinished && (
-          <div style={{
-            background: 'transparent',
-            width: '100vw',
-            height: '100vh'
-          }}>
-          </div>
-        )}
-
-        {/* Estado finalizado sem resultado - manter em branco para live */}
-        {timerState.isFinished && !showResult && (
+        {/* Estado inicial - manter em branco para live quando timer não está ativo */}
+        {!timer?.isActive && !showResult && (
           <div style={{
             background: 'transparent',
             width: '100vw',

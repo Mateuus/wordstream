@@ -5,7 +5,7 @@ import { useDebounce } from '../hooks/useDebounce';
 
 // Constantes de performance
 const MAX_CHAT_MESSAGES = 50; // Limite de mensagens para otimizar performance
-const TIMER_UPDATE_INTERVAL = 1000; // Intervalo de atualização do timer em ms
+// TIMER_UPDATE_INTERVAL removido - timer agora é atualizado via SSE
 const DEBOUNCE_DELAYS = {
   MESSAGES: 50,    // 50ms para mensagens (rápido para UX)
   STATS: 100,      // 100ms para stats (moderado)
@@ -210,6 +210,10 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
             case 'bannedWordsUpdate':
               // Usar debounce para palavras banidas (otimização de performance)
               setPendingBannedWords(data.bannedWords || []);
+              break;
+              
+            case 'timerUpdate':
+              setTimer(data.timer);
               break;
               
             case 'timerFinished':
@@ -482,33 +486,8 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
     }
   }, [sessionId]);
 
-  // Atualizar tempo restante do temporizador (otimizado)
-  useEffect(() => {
-    if (!timer?.isActive) return;
-
-    const interval = setInterval(() => {
-      setTimer(prev => {
-        if (!prev || !prev.isActive) return prev;
-        
-        const newRemainingTime = prev.remainingTime - 1;
-        if (newRemainingTime <= 0) {
-          return null; // Timer será limpo pelo evento SSE
-        }
-        
-        // Só atualiza se o tempo realmente mudou (otimização)
-        if (newRemainingTime === prev.remainingTime) {
-          return prev;
-        }
-        
-        return {
-          ...prev,
-          remainingTime: newRemainingTime
-        };
-      });
-    }, TIMER_UPDATE_INTERVAL);
-
-    return () => clearInterval(interval);
-  }, [timer?.isActive]);
+  // Timer agora é atualizado via eventos SSE do backend
+  // Removido intervalo local para evitar conflitos
 
   // Cleanup
   useEffect(() => {

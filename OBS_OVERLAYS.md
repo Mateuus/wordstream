@@ -57,11 +57,11 @@ Use os botões "Copiar" para copiar as URLs dos overlays:
 - ✅ Contador regressivo visual
 - ✅ Mudança de cor quando restam menos de 10 segundos
 - ✅ Efeito visual ao finalizar (animação de resultado)
-- ✅ Exibição do Top 3 com animações
+- ✅ Exibição do vencedor com animações
 - ✅ Resultado aparece apenas uma vez (prevenção de duplicação)
 - ✅ Auto-hide do resultado após 5 segundos
 - ✅ Fundo transparente
-- ✅ Duração configurável via URL
+- ✅ **Sincronizado com temporizador da sessão principal**
 - ✅ **Tela em branco quando timer não está ativo** (ideal para live)
 
 ## ⚙️ Configurações Avançadas
@@ -111,13 +111,13 @@ Use os botões "Copiar" para copiar as URLs dos overlays:
 ## 🔧 Sistema de Timer
 
 ### Estados do Timer
-1. **Preparando**: Tela em branco (antes de iniciar)
+1. **Inativo**: Tela em branco (timer não iniciado)
 2. **Ativo**: Contagem regressiva em andamento
 3. **Finalizado**: Resultado sendo exibido
 4. **Escondido**: Tela em branco (após 5 segundos do resultado)
 
 ### Controle Automático
-- Timer inicia automaticamente após 2 segundos
+- **Timer controlado pela sessão principal** (não automático)
 - Resultado aparece automaticamente ao finalizar
 - Resultado some automaticamente após 5 segundos
 - Prevenção de exibição múltipla do resultado
@@ -185,9 +185,9 @@ Os overlays são otimizados para:
 - **Com palavras**: Lista das 5 palavras mais mencionadas
 
 #### Timer com Resultado
-- **Preparando**: Tela em branco
+- **Inativo**: Tela em branco (timer não iniciado)
 - **Ativo**: Contador regressivo visível
-- **Resultado**: Animação do resultado por 5 segundos
+- **Resultado**: Animação do vencedor por 5 segundos
 - **Finalizado**: Tela em branco novamente
 
 ## 🔄 Atualizações em Tempo Real
