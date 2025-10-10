@@ -41,11 +41,7 @@ function SessionPageContent({ params }: SessionPageProps) {
     connectionStatus,
     messages,
     bannedWords,
-    timer,
-    winner,
-    settings,
     connectToChannel,
-    clearSession,
     clearMessages,
     banWord,
     excludeWord,
@@ -425,8 +421,8 @@ function SessionPageContent({ params }: SessionPageProps) {
                   ref={chatContainerRef}
                   className="overflow-y-auto p-3"
                   style={{ 
-                    height: '300px',
-                    maxHeight: '300px'
+                    height: '250px',
+                    maxHeight: '250px'
                   }}
                 >
                   {messages.length === 0 ? (
@@ -597,20 +593,20 @@ function SessionPageContent({ params }: SessionPageProps) {
           </div>
         </div>
 
-        {/* Desktop Layout */}
-        <div className="hidden sm:flex gap-6" style={{ height: 'calc(100vh - 200px)' }}>
+        {/* Desktop Layout - 3 Colunas */}
+        <div className="hidden sm:flex gap-4 items-start">
           
-          {/* Chat Area - 50% da largura */}
-          <div className="w-1/2">
-            <div className="glass rounded-2xl border border-white border-opacity-20 h-full">
+          {/* Coluna 1: Chat - 33% da largura */}
+          <div className="w-1/3">
+            <div className="glass rounded-2xl border border-white border-opacity-20" style={{ height: '600px' }}>
               <div className="h-full flex flex-col">
                 {/* Header do Chat */}
-                <div className="bg-white bg-opacity-10 px-4 py-3 border-b border-white border-opacity-20">
+                <div className="bg-white bg-opacity-10 px-3 py-2 border-b border-white border-opacity-20">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-black font-medium">
-                      Chat em Tempo Real - {sessionData?.channel}
+                    <h3 className="text-black font-medium text-sm">
+                      Chat - {sessionData?.channel}
                     </h3>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
                       {connectionStatus?.reconnecting ? (
                         <>
                           <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div>
@@ -622,14 +618,14 @@ function SessionPageContent({ params }: SessionPageProps) {
                         <>
                           <div className="w-2 h-2 rounded-full bg-red-500"></div>
                           <span className="text-xs text-red-400">
-                            FALHA NA RECONEXÃO
+                            FALHA
                           </span>
                         </>
                       ) : (
                         <>
                           <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
                           <span className="text-xs text-gray-300">
-                            {isConnected ? 'AO VIVO' : 'DESCONECTADO'}
+                            {isConnected ? 'AO VIVO' : 'OFF'}
                           </span>
                         </>
                       )}
@@ -640,36 +636,36 @@ function SessionPageContent({ params }: SessionPageProps) {
                 {/* Container das Mensagens */}
                 <div 
                   ref={chatContainerRef}
-                  className="flex-1 overflow-y-auto p-4"
+                  className="flex-1 overflow-y-auto p-3"
                   style={{ 
-                    height: 'calc(100% - 60px)',
-                    maxHeight: 'calc(100% - 60px)'
+                    height: 'calc(100% - 50px)',
+                    maxHeight: 'calc(100% - 50px)'
                   }}
                 >
                   {messages.length === 0 ? (
                     <div className="flex items-center justify-center h-full text-gray-400">
                       <div className="text-center">
-                        <div className="text-4xl mb-4">💬</div>
-                        <p className="text-lg font-medium mb-2">
-                          {isConnected ? 'Aguardando mensagens...' : 'Conecte-se ao chat para começar'}
+                        <div className="text-3xl mb-3">💬</div>
+                        <p className="text-sm font-medium mb-1">
+                          {isConnected ? 'Aguardando mensagens...' : 'Conecte-se ao chat'}
                         </p>
-                        <p className="text-sm">
+                        <p className="text-xs">
                           {isConnected 
-                            ? 'As mensagens do chat aparecerão aqui em tempo real'
-                            : 'Clique em "Conectar ao Chat" para começar'
+                            ? 'Mensagens aparecerão aqui'
+                            : 'Clique em "Conectar ao Chat"'
                           }
                         </p>
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       {messages.map((message, index) => (
                         <div key={message.id || index} className="w-full">
-                          <div className="flex items-start space-x-2 p-2 hover:bg-white hover:bg-opacity-5 rounded-lg transition-colors">
-                            <span className="text-blue-400 font-semibold text-sm">
+                          <div className="flex items-start space-x-1 p-1 hover:bg-white hover:bg-opacity-5 rounded transition-colors">
+                            <span className="text-blue-400 font-semibold text-xs">
                               {message.username}:
                             </span>
-                            <span className="text-gray-200 text-sm flex-1">
+                            <span className="text-gray-200 text-xs flex-1">
                               {message.message}
                             </span>
                             <span className="text-gray-500 text-xs">
@@ -688,16 +684,16 @@ function SessionPageContent({ params }: SessionPageProps) {
             </div>
           </div>
 
-          {/* Timer - 25% da largura */}
-          <div className="w-1/4">
+          {/* Coluna 2: Temporizador - 33% da largura */}
+          <div className="w-1/3">
             <TimerController />
           </div>
 
-          {/* Word Counter - 25% da largura */}
-          <div className="w-1/4">
-            <div className="glass rounded-2xl p-6 h-full">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-3">
+          {/* Coluna 3: Contador de Palavras - 33% da largura */}
+          <div className="w-1/3">
+            <div className="glass rounded-2xl p-4" style={{ height: 'fit-content', maxHeight: '80vh' }}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
                   <div className="text-lg">📊</div>
                   <h3 className="text-lg font-bold text-white">
                     Contador de Palavras
@@ -707,14 +703,14 @@ function SessionPageContent({ params }: SessionPageProps) {
 
               {/* Stats */}
               {sessionStats && (
-                <div className="bg-gray-800 bg-opacity-50 rounded-xl p-4 mb-6">
-                  <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-800 bg-opacity-50 rounded-xl p-3 mb-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-400">{sessionStats.totalWords}</div>
+                      <div className="text-xl font-bold text-blue-400">{sessionStats.totalWords}</div>
                       <div className="text-xs text-gray-300">Total</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-green-400">{sessionStats.uniqueWords}</div>
+                      <div className="text-xl font-bold text-green-400">{sessionStats.uniqueWords}</div>
                       <div className="text-xs text-gray-300">Únicas</div>
                     </div>
                   </div>
@@ -722,41 +718,41 @@ function SessionPageContent({ params }: SessionPageProps) {
               )}
 
               {/* Word List */}
-              <div className="max-h-96 overflow-y-auto">
+              <div className="overflow-y-auto" style={{ maxHeight: '400px' }}>
                 {sessionStats && sessionStats.topWords.length > 0 ? (
                   <div className="space-y-2">
                     {sessionStats.topWords.map((wordCount, index) => {
-                        const isBanned = bannedWords.includes(wordCount.word);
-                        
-                        return (
-                          <div
-                            key={wordCount.word}
-                            className={`flex items-center justify-between p-3 rounded-xl transition-all duration-200 ${
-                              isBanned ? 'bg-red-900 bg-opacity-30 border border-red-500' : 
-                              'bg-white bg-opacity-5 hover:bg-opacity-10'
-                            }`}
-                          >
-                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      const isBanned = bannedWords.includes(wordCount.word);
+                      
+                      return (
+                        <div
+                          key={wordCount.word}
+                          className={`flex items-center justify-between p-3 rounded-xl transition-all duration-200 ${
+                            isBanned ? 'bg-red-900 bg-opacity-30 border border-red-500' : 
+                            'bg-white bg-opacity-5 hover:bg-opacity-10'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2 flex-1 min-w-0">
                             <span className="text-xs text-gray-600 font-mono w-6 text-center">
                               #{index + 1}
                             </span>
-                            <span className={`font-semibold truncate ${
+                            <span className={`font-semibold text-sm truncate ${
                               isBanned ? 'text-red-300 line-through' :
                               'text-gray-800'
                             }`}>
                               {wordCount.word}
                             </span>
-                            {isBanned && <span className="text-red-400 text-sm">🚫</span>}
+                            {isBanned && <span className="text-red-400 text-xs">🚫</span>}
                           </div>
                           
-                          <div className="flex items-center space-x-3">
-                            <span className={`font-bold text-lg ${
+                          <div className="flex items-center space-x-2">
+                            <span className={`font-bold text-sm ${
                               isBanned ? 'text-red-400' :
                               'text-blue-600'
                             }`}>
                               {wordCount.count}
                             </span>
-                            <div className="w-16 bg-white bg-opacity-20 rounded-full h-2">
+                            <div className="w-12 bg-white bg-opacity-20 rounded-full h-2">
                               <div
                                 className={`h-2 rounded-full transition-all duration-500 ${
                                   isBanned ? 'bg-red-500' :
@@ -769,11 +765,11 @@ function SessionPageContent({ params }: SessionPageProps) {
                             </div>
                             
                             {/* Botões de ação */}
-                            <div className="flex items-center space-x-2 ml-3">
+                            <div className="flex items-center space-x-1">
                               {isBanned ? (
                                 <button
                                   onClick={() => unbanWord(wordCount.word)}
-                                  className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors"
+                                  className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
                                   title="Desbanir palavra (permanente)"
                                 >
                                   ✅
@@ -782,14 +778,14 @@ function SessionPageContent({ params }: SessionPageProps) {
                                 <>
                                   <button
                                     onClick={() => banWord(wordCount.word)}
-                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
+                                    className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
                                     title="Banir palavra (permanente)"
                                   >
                                     🚫
                                   </button>
                                   <button
                                     onClick={() => excludeWord(wordCount.word)}
-                                    className="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded transition-colors"
+                                    className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs rounded transition-colors"
                                     title="Excluir palavra (pode voltar)"
                                   >
                                     ❌
@@ -803,12 +799,12 @@ function SessionPageContent({ params }: SessionPageProps) {
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <div className="text-4xl mb-4">📊</div>
-                    <h4 className="text-lg font-semibold text-white mb-2">
+                  <div className="text-center py-8">
+                    <div className="text-3xl mb-3">📊</div>
+                    <h4 className="text-sm font-semibold text-white mb-1">
                       Aguardando palavras...
                     </h4>
-                    <p className="text-gray-400 text-sm">
+                    <p className="text-gray-400 text-xs">
                       As palavras mencionadas no chat aparecerão aqui
                     </p>
                   </div>
