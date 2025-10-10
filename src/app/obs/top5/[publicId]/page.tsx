@@ -84,36 +84,7 @@ const Top5OverlayComponent: React.FC<Top5OverlayComponentProps> = () => {
   return (
     <>
       <style jsx global>{`
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        
-        html, body {
-          background: transparent !important;
-          font-family: 'Arial', sans-serif !important;
-          overflow: hidden;
-          margin: 0;
-          padding: 0;
-        }
-        
-        #__next {
-          background: transparent !important;
-          margin: 0;
-          padding: 0;
-        }
-        
-        /* Remove scrollbars */
-        ::-webkit-scrollbar {
-          display: none;
-        }
-        
-        /* Hide scrollbar for IE, Edge and Firefox */
-        * {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
+        /* Estilos específicos do overlay Top 5 */
       `}</style>
       
       <div style={{

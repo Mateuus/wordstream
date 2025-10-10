@@ -153,37 +153,6 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
   return (
     <>
       <style jsx global>{`
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        
-        html, body {
-          background: transparent !important;
-          font-family: 'Arial', sans-serif !important;
-          overflow: hidden;
-          margin: 0;
-          padding: 0;
-        }
-        
-        #__next {
-          background: transparent !important;
-          margin: 0;
-          padding: 0;
-        }
-        
-        /* Remove scrollbars */
-        ::-webkit-scrollbar {
-          display: none;
-        }
-        
-        /* Hide scrollbar for IE, Edge and Firefox */
-        * {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-
         @keyframes pulse {
           0% { transform: scale(1); }
           50% { transform: scale(1.05); }
@@ -287,7 +256,7 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
             style={{
               position: 'absolute',
               top: '50%',
-              left: '47%',
+              left: '70%',
               transform: 'translate(-50%, -50%)',
               fontSize: '48px',
               fontWeight: 'bold',
