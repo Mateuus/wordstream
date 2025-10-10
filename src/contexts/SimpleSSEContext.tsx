@@ -50,12 +50,29 @@ interface SimpleSSEContextType {
   messages: ChatMessage[];
   sessionId: string | null;
   bannedWords: string[];
+  timer: {
+    isActive: boolean;
+    remainingTime: number;
+    duration: number;
+  } | null;
+  winner: {
+    word: string;
+    count: number;
+    color: string;
+  } | null;
+  settings: {
+    wordLimit: number;
+  };
   connectToChannel: (channel: string, platform?: 'twitch' | 'kick', existingSessionId?: string) => Promise<void>;
   clearSession: () => Promise<void>;
   clearMessages: () => void;
   banWord: (word: string) => Promise<void>;
   excludeWord: (word: string) => Promise<void>;
   unbanWord: (word: string) => Promise<void>;
+  startTimer: (duration: number) => Promise<void>;
+  stopTimer: () => Promise<void>;
+  clearCounter: () => Promise<void>;
+  updateSettings: (settings: { wordLimit?: number; bannedWords?: string[] }) => Promise<void>;
 }
 
 const SimpleSSEContext = createContext<SimpleSSEContextType | undefined>(undefined);
@@ -72,6 +89,19 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [bannedWords, setBannedWords] = useState<string[]>([]);
+  const [timer, setTimer] = useState<{
+    isActive: boolean;
+    remainingTime: number;
+    duration: number;
+  } | null>(null);
+  const [winner, setWinner] = useState<{
+    word: string;
+    count: number;
+    color: string;
+  } | null>(null);
+  const [settings, setSettings] = useState<{
+    wordLimit: number;
+  }>({ wordLimit: 10 });
   
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -135,6 +165,11 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
               console.log('🚫 Palavras banidas atualizadas:', data.bannedWords);
               break;
               
+            case 'timerFinished':
+              setWinner(data.winner);
+              setTimer(null);
+              console.log('🏆 Temporizador finalizado! Ganhador:', data.winner);
+              break;
               
             case 'connectionStatus':
               setConnectionStatus(data.status);
@@ -311,6 +346,116 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
     }
   }, [sessionId]);
 
+  const startTimer = useCallback(async (duration: number) => {
+    if (!sessionId) return;
+    
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/timer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ duration })
+      });
+      
+      if (response.ok) {
+        setTimer({
+          isActive: true,
+          remainingTime: duration,
+          duration
+        });
+        console.log(`⏱️ Temporizador iniciado: ${duration}s`);
+      } else {
+        const error = await response.json();
+        console.error('Erro ao iniciar temporizador:', error.error);
+      }
+    } catch (error) {
+      console.error('Erro ao iniciar temporizador:', error);
+    }
+  }, [sessionId]);
+
+  const stopTimer = useCallback(async () => {
+    if (!sessionId) return;
+    
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/timer`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        setTimer(null);
+        console.log('⏹️ Temporizador parado');
+      }
+    } catch (error) {
+      console.error('Erro ao parar temporizador:', error);
+    }
+  }, [sessionId]);
+
+  const clearCounter = useCallback(async () => {
+    if (!sessionId) return;
+    
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/clear`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        console.log('🗑️ Contador limpo');
+      } else {
+        const error = await response.json();
+        console.error('Erro ao limpar contador:', error.error);
+      }
+    } catch (error) {
+      console.error('Erro ao limpar contador:', error);
+    }
+  }, [sessionId]);
+
+  const updateSettings = useCallback(async (newSettings: { wordLimit?: number; bannedWords?: string[] }) => {
+    if (!sessionId) return;
+    
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSettings)
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSettings(prev => ({ ...prev, ...data.settings }));
+        if (newSettings.bannedWords !== undefined) {
+          setBannedWords(newSettings.bannedWords);
+        }
+        console.log('⚙️ Configurações atualizadas');
+      } else {
+        const error = await response.json();
+        console.error('Erro ao atualizar configurações:', error.error);
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar configurações:', error);
+    }
+  }, [sessionId]);
+
+  // Atualizar tempo restante do temporizador
+  useEffect(() => {
+    if (!timer?.isActive) return;
+
+    const interval = setInterval(() => {
+      setTimer(prev => {
+        if (!prev || !prev.isActive) return prev;
+        
+        const newRemainingTime = prev.remainingTime - 1;
+        if (newRemainingTime <= 0) {
+          return null; // Timer será limpo pelo evento SSE
+        }
+        
+        return {
+          ...prev,
+          remainingTime: newRemainingTime
+        };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timer?.isActive]);
 
   // Cleanup
   useEffect(() => {
@@ -329,12 +474,19 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
     messages,
     sessionId,
     bannedWords,
+    timer,
+    winner,
+    settings,
     connectToChannel,
     clearSession,
     clearMessages,
     banWord,
     excludeWord,
-    unbanWord
+    unbanWord,
+    startTimer,
+    stopTimer,
+    clearCounter,
+    updateSettings
   };
 
   return (

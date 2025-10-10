@@ -20,6 +20,20 @@ interface SessionData {
   createdBy: string;
   adminKey: string; // Chave única para administrar a sessão
   bannedWords?: string[]; // Lista de palavras banidas
+  timer?: {
+    duration: number;
+    startTime: number;
+    isActive: boolean;
+    endTime: number;
+  };
+  winner?: {
+    word: string;
+    count: number;
+    color: string;
+  };
+  settings?: {
+    wordLimit: number; // Quantidade de palavras na lista
+  };
 }
 
 export class RedisSessionManager {
@@ -513,9 +527,10 @@ export class RedisSessionManager {
     const filteredWordCounts = Array.from(session.wordCounts.values())
       .filter(wordCount => !bannedWords.includes(wordCount.word));
     
+    const wordLimit = session.settings?.wordLimit || 10;
     const topWords = filteredWordCounts
       .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+      .slice(0, wordLimit);
 
     const stats = {
       sessionId: session.publicId, // Usar publicId como sessionId

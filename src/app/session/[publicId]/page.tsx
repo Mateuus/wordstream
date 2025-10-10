@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSimpleSSE, SimpleSSEProvider } from '@/src/contexts/SimpleSSEContext';
+import { SettingsModal } from '../../../components/SettingsModal';
+import { TimerController } from '../../../components/TimerController';
+import { WinnerDisplay } from '../../../components/WinnerDisplay';
 
 interface SessionPageProps {
   params: Promise<{ publicId: string }>;
@@ -30,6 +33,7 @@ function SessionPageContent({ params }: SessionPageProps) {
   const [passwordPrompt, setPasswordPrompt] = useState(false);
   const [password, setPassword] = useState<string>('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   
   const {
     sessionStats,
@@ -37,12 +41,16 @@ function SessionPageContent({ params }: SessionPageProps) {
     connectionStatus,
     messages,
     bannedWords,
+    timer,
+    winner,
+    settings,
     connectToChannel,
     clearSession,
     clearMessages,
     banWord,
     excludeWord,
     unbanWord,
+    clearCounter,
   } = useSimpleSSE();
   
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -292,10 +300,16 @@ function SessionPageContent({ params }: SessionPageProps) {
                 Limpar Chat
               </button>
               <button
-                onClick={clearSession}
+                onClick={clearCounter}
                 className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs transition-colors"
               >
                 Limpar Contador
+              </button>
+              <button
+                onClick={() => setShowSettings(true)}
+                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs transition-colors"
+              >
+                ⚙️
               </button>
             </div>
           </div>
@@ -322,10 +336,16 @@ function SessionPageContent({ params }: SessionPageProps) {
                 Limpar Chat
               </button>
               <button
-                onClick={clearSession}
+                onClick={clearCounter}
                 className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition-colors"
               >
                 Limpar Contador
+              </button>
+              <button
+                onClick={() => setShowSettings(true)}
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
+              >
+                ⚙️ Configurações
               </button>
             </div>
           </div>
@@ -449,6 +469,9 @@ function SessionPageContent({ params }: SessionPageProps) {
                 </div>
               </div>
             </div>
+
+            {/* Timer - Mobile */}
+            <TimerController />
 
             {/* Word Counter - Mobile */}
             <div className="glass rounded-2xl p-4">
@@ -577,8 +600,8 @@ function SessionPageContent({ params }: SessionPageProps) {
         {/* Desktop Layout */}
         <div className="hidden sm:flex gap-6" style={{ height: 'calc(100vh - 200px)' }}>
           
-          {/* Chat Area - 60% da largura */}
-          <div className="w-3/5">
+          {/* Chat Area - 50% da largura */}
+          <div className="w-1/2">
             <div className="glass rounded-2xl border border-white border-opacity-20 h-full">
               <div className="h-full flex flex-col">
                 {/* Header do Chat */}
@@ -665,8 +688,13 @@ function SessionPageContent({ params }: SessionPageProps) {
             </div>
           </div>
 
-          {/* Word Counter - 40% da largura */}
-          <div className="w-2/5">
+          {/* Timer - 25% da largura */}
+          <div className="w-1/4">
+            <TimerController />
+          </div>
+
+          {/* Word Counter - 25% da largura */}
+          <div className="w-1/4">
             <div className="glass rounded-2xl p-6 h-full">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-3">
@@ -797,6 +825,13 @@ function SessionPageContent({ params }: SessionPageProps) {
           <p>🏆 WordStream | Sessão: {publicId} | Canal: {sessionData?.channel}</p>
         </div>
       </div>
+
+      {/* Modals */}
+      <SettingsModal 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)} 
+      />
+      <WinnerDisplay />
     </div>
   );
 }

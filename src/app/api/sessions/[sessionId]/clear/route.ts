@@ -1,0 +1,51 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { RedisSessionManager } from '@/src/lib/redisSessionManager';
+import { broadcastToChannel } from '@/src/lib/simpleSSEManager';
+
+const redisSessionManager = RedisSessionManager.getInstance();
+
+// POST - Limpar contador (deletar todas as palavras)
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ sessionId: string }> }
+) {
+  try {
+    const { sessionId } = await params;
+
+    // Buscar dados da sessão
+    const sessionData = await redisSessionManager.getSession(sessionId);
+    if (!sessionData) {
+      return NextResponse.json(
+        { error: 'Sessão não encontrada' },
+        { status: 404 }
+      );
+    }
+
+    // Limpar todas as palavras do contador
+    await redisSessionManager.updateSession(sessionId, {
+      wordCounts: new Map(),
+      totalWords: 0
+    });
+    
+    // Enviar atualização das estatísticas
+    const updatedStats = await redisSessionManager.getSessionStats(sessionId);
+    if (updatedStats) {
+      broadcastToChannel(sessionId, {
+        type: 'wordUpdate',
+        stats: updatedStats
+      });
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Contador limpo com sucesso'
+    });
+
+  } catch (error) {
+    console.error('Erro ao limpar contador:', error);
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    );
+  }
+}
