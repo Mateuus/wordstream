@@ -25,8 +25,8 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3500,
         REDIS_URL: 'redis://192.168.5.210:6379',
-        NEXT_PUBLIC_APP_URL: 'http://contador.bdjcoins.com',
-        NEXT_PUBLIC_BASE_URL: 'http://contador.bdjcoins.com'
+        NEXT_PUBLIC_APP_URL: 'https://contador.bdjcoins.com',
+        NEXT_PUBLIC_BASE_URL: 'https://contador.bdjcoins.com'
       },
       log_file: './logs/combined.log',
       out_file: './logs/out.log',
