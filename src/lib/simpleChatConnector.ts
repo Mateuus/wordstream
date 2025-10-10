@@ -23,6 +23,11 @@ export class SimpleChatConnector {
   private reconnectTimeouts = new Map<string, NodeJS.Timeout>(); // channelName -> timeout
   private maxReconnectAttempts = 10; // Máximo de tentativas de reconexão
   private baseReconnectDelay = 5000; // Delay base de 5 segundos
+  
+  // Sistema de desconexão por inatividade
+  private sseCheckInterval: NodeJS.Timeout | null = null;
+  private readonly SSE_CHECK_INTERVAL = 30000; // Verificar a cada 30 segundos
+  private readonly INACTIVITY_TIMEOUT = 60000; // Desconectar após 1 minuto sem SSE
 
   static getInstance(): SimpleChatConnector {
     if (!SimpleChatConnector.instance) {
@@ -58,6 +63,7 @@ export class SimpleChatConnector {
       
       // Iniciar verificação periódica de conexões SSE
       this.startConnectionCheck();
+      this.startSSEConnectionCheck();
       
       return existingSessionId;
     } catch (error) {
@@ -211,12 +217,107 @@ export class SimpleChatConnector {
   }
 
   /**
+   * Inicia verificação periódica de conexões SSE ativas
+   * Desconecta do chat se não há clientes conectados
+   */
+  private startSSEConnectionCheck(): void {
+    if (this.sseCheckInterval) {
+      return; // Já está rodando
+    }
+
+    this.sseCheckInterval = setInterval(() => {
+      this.checkSSEConnectionsAndDisconnect();
+    }, this.SSE_CHECK_INTERVAL);
+
+    console.log('🔍 Verificação de conexões SSE iniciada');
+  }
+
+  /**
+   * Verifica conexões SSE ativas e desconecta chats sem clientes
+   */
+  private checkSSEConnectionsAndDisconnect(): void {
+    const channelsToDisconnect: string[] = [];
+
+    // Verificar cada canal conectado
+    for (const [channel] of this.connections.entries()) {
+      // Encontrar sessionId correspondente ao canal
+      let sessionId: string | null = null;
+      for (const [sid, ch] of this.sessionToChannel.entries()) {
+        if (ch === channel) {
+          sessionId = sid;
+          break;
+        }
+      }
+
+      if (sessionId) {
+        const activeConnections = getActiveConnectionsCount(sessionId);
+        
+        if (activeConnections === 0) {
+          console.log(`💤 Canal ${channel} (sessionId: ${sessionId}) sem conexões SSE ativas`);
+          channelsToDisconnect.push(channel);
+        } else {
+          console.log(`✅ Canal ${channel} (sessionId: ${sessionId}) tem ${activeConnections} conexões SSE ativas`);
+        }
+      }
+    }
+
+    // Desconectar canais sem conexões SSE
+    channelsToDisconnect.forEach(channel => {
+      this.disconnectFromChannelPrivate(channel, 'Sem conexões SSE ativas');
+    });
+  }
+
+  /**
+   * Desconecta de um canal específico (método privado)
+   */
+  private disconnectFromChannelPrivate(channel: string, reason: string): void {
+    const client = this.connections.get(channel);
+    if (client) {
+      console.log(`🔌 Desconectando do canal ${channel}: ${reason}`);
+      
+      // Desconectar cliente
+      client.disconnect().catch(console.error);
+      
+      // Remover das estruturas de dados
+      this.connections.delete(channel);
+      
+      // Remover mapeamento sessionId -> channel
+      for (const [sessionId, ch] of this.sessionToChannel.entries()) {
+        if (ch === channel) {
+          this.sessionToChannel.delete(sessionId);
+          break;
+        }
+      }
+      
+      // Limpar tentativas de reconexão
+      this.reconnectAttempts.delete(channel);
+      const timeout = this.reconnectTimeouts.get(channel);
+      if (timeout) {
+        clearTimeout(timeout);
+        this.reconnectTimeouts.delete(channel);
+      }
+      
+      console.log(`✅ Desconectado do canal ${channel}`);
+    }
+  }
+
+  /**
    * Para a verificação periódica de conexões
    */
   private stopConnectionCheck(): void {
     if (this.connectionCheckInterval) {
       clearInterval(this.connectionCheckInterval);
       this.connectionCheckInterval = null;
+    }
+  }
+
+  /**
+   * Para a verificação de conexões SSE
+   */
+  private stopSSEConnectionCheck(): void {
+    if (this.sseCheckInterval) {
+      clearInterval(this.sseCheckInterval);
+      this.sseCheckInterval = null;
     }
   }
 
@@ -246,6 +347,7 @@ export class SimpleChatConnector {
     // Se não há mais conexões, parar a verificação
     if (this.connections.size === 0) {
       this.stopConnectionCheck();
+      this.stopSSEConnectionCheck();
     }
   }
 
