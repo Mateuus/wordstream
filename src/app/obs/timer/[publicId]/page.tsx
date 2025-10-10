@@ -120,10 +120,10 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
       setShowResult(true);
       setHasShownResult(true);
       
-      // Esconder resultado após 5 segundos
+      // Esconder resultado após 3 segundos
       const timeout = setTimeout(() => {
         setShowResult(false);
-      }, 5000);
+      }, 8000);
       setResultTimeout(timeout);
     }
   }, [winner, hasShownResult]);
@@ -159,10 +159,18 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
           box-sizing: border-box;
         }
         
-        body {
-          background: transparent !important;
-          font-family: 'Arial', sans-serif;
+        html, body {
+          background: white !important;
+          font-family: 'Arial', sans-serif !important;
           overflow: hidden;
+          margin: 0;
+          padding: 0;
+        }
+        
+        #__next {
+          background: white !important;
+          margin: 0;
+          padding: 0;
         }
         
         /* Remove scrollbars */
@@ -182,14 +190,26 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
           100% { transform: scale(1); }
         }
 
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes slideInFromRight {
+          from { 
+            opacity: 0; 
+            transform: translateX(100vw); 
+          }
+          to { 
+            opacity: 1; 
+            transform: translateX(0); 
+          }
         }
 
-        @keyframes slideIn {
-          from { transform: translateX(-100%); }
-          to { transform: translateX(0); }
+        @keyframes slideOutToLeft {
+          from { 
+            opacity: 1; 
+            transform: translateX(0); 
+          }
+          to { 
+            opacity: 0; 
+            transform: translateX(-100vw); 
+          }
         }
 
         @keyframes bounce {
@@ -202,8 +222,16 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
           animation: pulse 2s infinite;
         }
 
-        .result-display {
-          animation: fadeIn 0.5s ease-out;
+        .timer-display.warning {
+          animation: pulse 1s infinite;
+        }
+
+        .result-card {
+          animation: slideInFromRight 0.8s ease-out forwards;
+        }
+
+        .result-card.hiding {
+          animation: slideOutToLeft 0.5s ease-in forwards;
         }
 
         .word-item {
@@ -216,19 +244,21 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
       `}</style>
       
       <div style={{
-        background: 'transparent',
-        color: 'white',
+        background: 'white',
+        color: 'black',
         fontFamily: 'Arial, sans-serif',
-        padding: '20px',
+        padding: '15px',
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         alignItems: 'center',
-        position: 'relative'
+        position: 'relative',
+        width: '100vw',
+        height: '100vh'
       }}>
         
-        {/* Debug Info - apenas em desenvolvimento */}
+        {/* Debug Info - apenas em desenvolvimento
         {process.env.NODE_ENV === 'development' && (
           <div style={{
             position: 'absolute',
@@ -248,25 +278,27 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
             <br />
             Winner: {winner ? winner.word : 'NENHUM'}
           </div>
-        )}
+        )} */}
 
         {/* Timer Display - só aparece quando timer está ativo */}
         {timer?.isActive && (
           <div 
-            className="timer-display"
+            className={`timer-display ${timer.remainingTime <= 10 ? 'warning' : ''}`}
             style={{
               fontSize: '48px',
               fontWeight: 'bold',
-              color: timer.remainingTime <= 10 ? '#ff4444' : '#00ff00',
-              textShadow: '3px 3px 6px rgba(0, 0, 0, 0.8)',
-              background: 'rgba(0, 0, 0, 0.4)',
+              color: timer.remainingTime <= 10 ? '#ff4444' : '#0066cc',
+              textShadow: 'none',
+              background: 'transparent',
               padding: '20px 30px',
-              borderRadius: '15px',
-              border: `3px solid ${timer.remainingTime <= 10 ? '#ff4444' : '#00ff00'}`,
-              backdropFilter: 'blur(10px)',
-              marginBottom: '20px',
+              borderRadius: '50%',
+              border: `3px solid ${timer.remainingTime <= 10 ? '#ff4444' : '#0066cc'}`,
               textAlign: 'center',
-              minWidth: '200px'
+              minWidth: '200px',
+              minHeight: '200px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
           >
             {formatTime(timer.remainingTime)}
@@ -276,28 +308,27 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
         {/* Resultado Final */}
         {showResult && (
           <div 
-            className="result-display"
+            className="result-card"
             style={{
               position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.9), rgba(255, 140, 0, 0.9))',
-              padding: '30px 40px',
-              borderRadius: '20px',
-              border: '4px solid #FFD700',
-              backdropFilter: 'blur(15px)',
-              textAlign: 'center',
-              boxShadow: '0 0 30px rgba(255, 215, 0, 0.5)',
-              zIndex: 1000
+              top: '15px',
+              left: '15px',
+              background: 'rgba(0, 0, 0, 0.3)',
+              padding: '20px',
+              borderRadius: '15px',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 1000,
+              maxWidth: '400px'
             }}
           >
             <div style={{
-              fontSize: '32px',
+              fontSize: '24px',
               fontWeight: 'bold',
-              color: '#8B4513',
-              marginBottom: '20px',
-              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)'
+              color: '#FFD700',
+              marginBottom: '15px',
+              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)',
+              textAlign: 'center'
             }}>
               🏆 RESULTADO FINAL 🏆
             </div>
@@ -306,8 +337,7 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '10px',
-                minWidth: '300px'
+                gap: '8px'
               }}>
                 <div
                   className="word-item"
@@ -315,23 +345,23 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    background: 'rgba(255, 215, 0, 0.3)',
-                    padding: '12px 20px',
-                    borderRadius: '10px',
-                    border: '2px solid #FFD700',
-                    backdropFilter: 'blur(5px)'
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    padding: '10px 15px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(2px)'
                   }}
                 >
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '15px'
+                    gap: '12px'
                   }}>
                     <div style={{
-                      fontSize: '20px',
+                      fontSize: '18px',
                       fontWeight: 'bold',
                       color: '#FFD700',
-                      minWidth: '30px',
+                      minWidth: '25px',
                       textAlign: 'center'
                     }}>
                       <span className="winner-crown">👑</span>
@@ -339,10 +369,10 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
                     </div>
                     
                     <div style={{
-                      fontSize: '18px',
+                      fontSize: '16px',
                       fontWeight: 'bold',
-                      color: '#8B4513',
-                      maxWidth: '200px',
+                      color: 'white',
+                      maxWidth: '150px',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
@@ -352,24 +382,40 @@ const TimerOverlayComponent: React.FC<TimerOverlayComponentProps> = () => {
                   </div>
                   
                   <div style={{
-                    fontSize: '20px',
-                    fontWeight: 'bold',
-                    color: '#8B4513',
-                    background: 'rgba(255, 255, 255, 0.3)',
-                    padding: '5px 15px',
-                    borderRadius: '15px',
-                    minWidth: '50px',
-                    textAlign: 'center'
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
                   }}>
-                    {winner.count}
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      background: '#00ff00',
+                      boxShadow: '0 0 8px rgba(0, 255, 0, 0.6)'
+                    }}></div>
+                    <div style={{
+                      fontSize: '18px',
+                      fontWeight: 'bold',
+                      color: '#00ff00',
+                      background: 'rgba(0, 255, 0, 0.2)',
+                      padding: '4px 12px',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(0, 255, 0, 0.3)',
+                      minWidth: '40px',
+                      textAlign: 'center'
+                    }}>
+                      {winner.count}
+                    </div>
                   </div>
                 </div>
               </div>
             ) : (
               <div style={{
-                fontSize: '18px',
-                color: '#8B4513',
-                fontStyle: 'italic'
+                fontSize: '16px',
+                color: 'white',
+                fontStyle: 'italic',
+                textAlign: 'center',
+                padding: '10px'
               }}>
                 Nenhuma palavra foi contada!
               </div>

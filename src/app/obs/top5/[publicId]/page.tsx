@@ -90,10 +90,18 @@ const Top5OverlayComponent: React.FC<Top5OverlayComponentProps> = () => {
           box-sizing: border-box;
         }
         
-        body {
+        html, body {
           background: transparent !important;
-          font-family: 'Arial', sans-serif;
+          font-family: 'Arial', sans-serif !important;
           overflow: hidden;
+          margin: 0;
+          padding: 0;
+        }
+        
+        #__next {
+          background: transparent !important;
+          margin: 0;
+          padding: 0;
         }
         
         /* Remove scrollbars */
