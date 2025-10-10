@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import PWAInstallPrompt from '../components/PWAInstallPrompt'
@@ -13,8 +13,6 @@ export const metadata: Metadata = {
   title: 'WordStream',
   description: 'Contador de palavras com processamento centralizado no servidor',
   manifest: '/manifest.json',
-  themeColor: '#000000',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -32,6 +30,14 @@ export const metadata: Metadata = {
       { url: '/icons/icon-152x152.png', sizes: '152x152', type: 'image/png' },
     ],
   },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#000000',
 }
 
 export default function RootLayout({
