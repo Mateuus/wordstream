@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useRef, useState, useCallb
 
 // Constantes de performance
 const MAX_CHAT_MESSAGES = 50; // Limite de mensagens para otimizar performance
+const TIMER_UPDATE_INTERVAL = 1000; // Intervalo de atualização do timer em ms
 
 interface WordCount {
   word: string;
@@ -443,7 +444,7 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
     }
   }, [sessionId]);
 
-  // Atualizar tempo restante do temporizador
+  // Atualizar tempo restante do temporizador (otimizado)
   useEffect(() => {
     if (!timer?.isActive) return;
 
@@ -456,12 +457,17 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
           return null; // Timer será limpo pelo evento SSE
         }
         
+        // Só atualiza se o tempo realmente mudou (otimização)
+        if (newRemainingTime === prev.remainingTime) {
+          return prev;
+        }
+        
         return {
           ...prev,
           remainingTime: newRemainingTime
         };
       });
-    }, 1000);
+    }, TIMER_UPDATE_INTERVAL);
 
     return () => clearInterval(interval);
   }, [timer?.isActive]);

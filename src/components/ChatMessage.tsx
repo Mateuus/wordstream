@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 
 interface ChatMessageProps {
   message: {
@@ -27,17 +27,18 @@ interface ChatMessageProps {
   };
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
-  const formatTime = (timestamp: Date) => {
+const ChatMessageComponent: React.FC<ChatMessageProps> = React.memo(({ message }) => {
+  // Memoizar funções para evitar recriação a cada render
+  const formatTime = useCallback((timestamp: Date) => {
     return new Date(timestamp).toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
+  }, []);
 
-  const getPlatformColor = (platform: 'twitch' | 'kick') => {
+  const getPlatformColor = useCallback((platform: 'twitch' | 'kick') => {
     return platform === 'twitch' ? 'text-purple-400' : 'text-green-400';
-  };
+  }, []);
 
   // Renderiza badges como ícones/imagens antes do nome
   const renderBadges = (): React.ReactNode => {
@@ -177,4 +178,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       </div>
     </div>
   );
-};
+}, (prevProps: ChatMessageProps, nextProps: ChatMessageProps) => {
+  // Comparação customizada para evitar re-renderizações desnecessárias
+  return (
+    prevProps.message.id === nextProps.message.id &&
+    prevProps.message.message === nextProps.message.message &&
+    prevProps.message.username === nextProps.message.username &&
+    prevProps.message.timestamp.getTime() === nextProps.message.timestamp.getTime()
+  );
+});
+
+ChatMessageComponent.displayName = 'ChatMessage';
+
+export const ChatMessage = ChatMessageComponent;

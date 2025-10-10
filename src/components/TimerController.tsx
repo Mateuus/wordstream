@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useSimpleSSE } from '../contexts/SimpleSSEContext';
 
-export const TimerController: React.FC = () => {
+const TimerControllerComponent: React.FC = () => {
   const { timer, startTimer, stopTimer, clearCounter } = useSimpleSSE();
   const [duration, setDuration] = useState(60); // 1 minuto padrão
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleStartTimer = async () => {
+  const handleStartTimer = useCallback(async () => {
     setIsLoading(true);
     try {
       // Limpar contador antes de iniciar o temporizador
@@ -19,13 +19,24 @@ export const TimerController: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [duration, clearCounter, startTimer]);
 
-  const formatTime = (seconds: number): string => {
+  const formatTime = useCallback((seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  }, []);
+
+  // Memoizar o tempo formatado para evitar recálculos desnecessários
+  const formattedTime = useMemo(() => {
+    return timer ? formatTime(timer.remainingTime) : '00:00';
+  }, [timer, formatTime]);
+
+  // Memoizar classes CSS para evitar recálculos
+  const timerClasses = useMemo(() => {
+    if (!timer?.isActive) return 'text-gray-400';
+    return timer.remainingTime <= 10 ? 'text-red-400 animate-pulse' : 'text-blue-400';
+  }, [timer?.isActive, timer?.remainingTime]);
 
   return (
     <div className="glass rounded-2xl p-4" style={{ height: 'fit-content' }}>
@@ -37,14 +48,8 @@ export const TimerController: React.FC = () => {
         {/* Tempo restante */}
         <div className="mb-4 flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className={`text-4xl font-mono font-bold ${
-              timer?.isActive 
-                ? timer.remainingTime <= 10 
-                  ? 'text-red-400 animate-pulse' 
-                  : 'text-blue-400'
-                : 'text-gray-400'
-            }`}>
-              {timer ? formatTime(timer.remainingTime) : '00:00'}
+            <div className={`text-4xl font-mono font-bold ${timerClasses}`}>
+              {formattedTime}
             </div>
             <p className="text-xs text-gray-300 mt-1">
               {timer?.isActive ? 'Tempo restante' : 'Temporizador parado'}
@@ -123,3 +128,7 @@ export const TimerController: React.FC = () => {
     </div>
   );
 };
+
+TimerControllerComponent.displayName = 'TimerController';
+
+export const TimerController = React.memo(TimerControllerComponent);
