@@ -65,7 +65,7 @@ export class RedisSessionManager {
   /**
    * Aguarda a inicialização do Redis estar completa
    */
-  private async ensureRedisReady(retries = this.MAX_RETRIES): Promise<boolean> {
+  public async ensureRedisReady(retries = this.MAX_RETRIES): Promise<boolean> {
     // Aguardar inicialização em andamento
     if (this.initializationPromise) {
       await this.initializationPromise;

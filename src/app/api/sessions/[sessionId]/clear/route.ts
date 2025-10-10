@@ -12,6 +12,16 @@ export async function POST(
   try {
     const { sessionId } = await params;
 
+    // Aguardar Redis estar pronto (com timeout)
+    const redisReady = await Promise.race([
+      redisSessionManager.ensureRedisReady(),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 5000)) // 5s timeout
+    ]);
+
+    if (!redisReady) {
+      console.warn('⚠️ Redis não está pronto, usando cache local');
+    }
+
     // Buscar dados da sessão
     const sessionData = await redisSessionManager.getSession(sessionId);
     if (!sessionData) {

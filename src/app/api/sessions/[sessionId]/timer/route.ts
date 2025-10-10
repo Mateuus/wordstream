@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TimerManager } from '@/src/lib/timerManager';
+import { RedisSessionManager } from '@/src/lib/redisSessionManager';
 
 const timerManager = TimerManager.getInstance();
+const redisSessionManager = RedisSessionManager.getInstance();
 
 // POST - Iniciar temporizador
 export async function POST(
@@ -16,6 +18,16 @@ export async function POST(
       return NextResponse.json({ 
         error: 'Duração válida é obrigatória' 
       }, { status: 400 });
+    }
+
+    // Aguardar Redis estar pronto (com timeout)
+    const redisReady = await Promise.race([
+      redisSessionManager.ensureRedisReady(),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 5000)) // 5s timeout
+    ]);
+
+    if (!redisReady) {
+      console.warn('⚠️ Redis não está pronto, usando cache local');
     }
 
     // Verificar se já existe timer ativo
