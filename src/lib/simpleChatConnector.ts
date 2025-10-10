@@ -121,8 +121,6 @@ export class SimpleChatConnector {
 
   private async processMessage(sessionId: string, message: ChatMessage): Promise<void> {
     try {
-      console.log(`📨 Processando mensagem: "${message.message}" de ${message.username} para sessão ${sessionId}`);
-      
       // 🔑 SEMPRE enviar via SSE - o broadcast vai falhar silenciosamente se não houver conexões
       // Isso resolve o problema de serverless onde o Map de conexões não é compartilhado entre processos
       broadcastToChannel(sessionId, {
@@ -133,22 +131,16 @@ export class SimpleChatConnector {
       // Processar primeira palavra da mensagem
       const firstWord = this.extractFirstWord(message.message);
       if (firstWord) {
-        console.log(`🔤 Primeira palavra extraída: "${firstWord}"`);
         await this.sessionManager.processWord(sessionId, firstWord);
         
         // Enviar atualização de palavras via SSE usando sessionId (publicId)
         const stats = await this.sessionManager.getSessionStats(sessionId);
         if (stats) {
-          console.log(`📊 Stats atualizadas: ${stats.totalWords} palavras totais, ${stats.uniqueWords} únicas`);
           broadcastToChannel(sessionId, {
             type: 'wordUpdate',
             stats: stats
           });
-        } else {
-          console.log(`❌ Stats não encontradas para sessão ${sessionId}`);
         }
-      } else {
-        console.log(`🚫 Nenhuma palavra válida extraída de: "${message.message}"`);
       }
     } catch (error) {
       console.error('Erro ao processar mensagem:', error);
@@ -213,7 +205,6 @@ export class SimpleChatConnector {
     if (this.connectionCheckInterval) {
       clearInterval(this.connectionCheckInterval);
       this.connectionCheckInterval = null;
-      console.log('⏹️ Verificação periódica de conexões SSE parada');
     }
   }
 
@@ -228,7 +219,6 @@ export class SimpleChatConnector {
       const activeConnections = getActiveConnectionsCount(sessionId);
       
       if (activeConnections === 0) {
-        console.log(`🔌 Sessão ${sessionId} (canal ${channelName}) sem conexões SSE ativas, marcando para desconexão`);
         channelsToDisconnect.push(channelName);
         this.sessionToChannel.delete(sessionId); // Remover mapeamento
       }
@@ -237,13 +227,11 @@ export class SimpleChatConnector {
     // Desconectar canais inativos
     for (const channel of channelsToDisconnect) {
       await this.disconnectFromChannel(channel);
-      console.log(`💤 Canal ${channel} desconectado por inatividade`);
     }
 
     // Se não há mais conexões, parar a verificação
     if (this.connections.size === 0) {
       this.stopConnectionCheck();
-      console.log('💤 Todas as conexões de chat foram desconectadas');
     }
   }
 }
