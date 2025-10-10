@@ -30,9 +30,9 @@ interface ConnectionProviderProps {
 }
 
 export function ConnectionProvider({ children, onConnect, onClearSession }: ConnectionProviderProps) {
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus | null>(null);
+  const [connectionStatus] = useState<ConnectionStatus | null>(null);
 
   const connectToChannel = useCallback(async (channel: string, platform: 'twitch' | 'kick' = 'twitch', existingSessionId?: string) => {
     setIsLoading(true);

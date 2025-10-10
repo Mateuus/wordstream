@@ -119,7 +119,7 @@ export class RedisSessionManager {
       });
 
       this.redis.on('connect', () => {
-        console.log('✅ Redis conectado com sucesso');
+        //console.log('✅ Redis conectado com sucesso');
         this.redisAvailable = true;
         // Sincronizar apenas se houver sessões no cache local (fallback do início)
         if (this.sessions.size > 0) {

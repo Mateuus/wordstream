@@ -52,7 +52,7 @@ export async function PUT(
     }
 
     // Atualizar configurações
-    const updates: any = {};
+    const updates: Record<string, unknown> = {};
     
     if (wordLimit !== undefined) {
       updates.settings = {
@@ -71,7 +71,7 @@ export async function PUT(
       success: true, 
       message: 'Configurações atualizadas com sucesso',
       settings: {
-        wordLimit: updates.settings?.wordLimit || sessionData.settings?.wordLimit || 10,
+        wordLimit: (updates.settings as {wordLimit?: number})?.wordLimit || sessionData.settings?.wordLimit || 10,
         bannedWords: updates.bannedWords || sessionData.bannedWords || []
       }
     });

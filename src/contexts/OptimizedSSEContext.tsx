@@ -20,6 +20,7 @@ function SSEConnectionManager({ children }: OptimizedSSEProviderProps) {
   const { updateTimer, updateWinner } = useTimer();
   const eventSourceRef = useRef<EventSource | null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSSEMessage = useCallback((event: MessageEvent) => {
     try {
       const data = JSON.parse(event.data);
@@ -68,9 +69,10 @@ function SSEConnectionManager({ children }: OptimizedSSEProviderProps) {
 
   // Cleanup
   useEffect(() => {
+    const eventSource = eventSourceRef.current;
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+      if (eventSource) {
+        eventSource.close();
       }
     };
   }, []);
@@ -80,7 +82,7 @@ function SSEConnectionManager({ children }: OptimizedSSEProviderProps) {
 
 export function OptimizedSSEProvider({ children }: OptimizedSSEProviderProps) {
   // Handlers para os contextos
-  const handleConnect = useCallback(async (channel: string, platform: 'twitch' | 'kick' = 'twitch', existingSessionId?: string) => {
+  const handleConnect = useCallback(async (channel: string, platform: 'twitch' | 'kick' = 'twitch') => {
     // Implementar lógica de conexão aqui
     console.log('Conectando ao canal:', channel, platform);
   }, []);
@@ -120,7 +122,7 @@ export function OptimizedSSEProvider({ children }: OptimizedSSEProviderProps) {
     console.log('Limpando contador');
   }, []);
 
-  const handleUpdateSettings = useCallback(async (settings: any) => {
+  const handleUpdateSettings = useCallback(async (settings: Record<string, unknown>) => {
     // Implementar lógica de atualizar configurações aqui
     console.log('Atualizando configurações:', settings);
   }, []);

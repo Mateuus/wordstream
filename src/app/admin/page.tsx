@@ -7,8 +7,8 @@ export default function AdminPage() {
   const [platform, setPlatform] = useState<'twitch' | 'kick'>('twitch');
   const [createdBy, setCreatedBy] = useState('admin');
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [result, setResult] = useState<{error?: string; message?: string; shareUrl?: string; publicId?: string} | null>(null);
+  const [sessions, setSessions] = useState<Array<{id: string; sessionId: string; publicId: string; channel: string; platform: string; createdAt: string; isActive: boolean; totalWords: number; uniqueWords: number; createdBy: string; shareUrl: string}>>([]);
 
   const createSession = async () => {
     if (!channel.trim()) return;
@@ -36,7 +36,7 @@ export default function AdminPage() {
         // Recarregar lista de sessões
         loadSessions();
       }
-    } catch (error) {
+    } catch {
       setResult({ error: 'Erro ao criar sessão' });
     } finally {
       setIsLoading(false);
@@ -71,7 +71,7 @@ export default function AdminPage() {
         const errorData = await response.json();
         setResult({ error: errorData.error });
       }
-    } catch (error) {
+    } catch {
       setResult({ error: 'Erro ao desativar sessão' });
     }
   };
@@ -91,7 +91,7 @@ export default function AdminPage() {
       } else {
         setResult({ error: data.error || 'Erro ao renovar sessão' });
       }
-    } catch (error) {
+    } catch {
       setResult({ error: 'Erro ao renovar sessão' });
     }
   };
@@ -176,7 +176,7 @@ export default function AdminPage() {
                         className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm"
                       />
                       <button
-                        onClick={() => navigator.clipboard.writeText(result.shareUrl)}
+                        onClick={() => result.shareUrl && navigator.clipboard.writeText(result.shareUrl)}
                         className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
                       >
                         📋 Copiar
