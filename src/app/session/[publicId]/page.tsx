@@ -34,6 +34,7 @@ function SessionPageContent({ params }: SessionPageProps) {
   const {
     sessionStats,
     isConnected,
+    connectionStatus,
     messages,
     connectToChannel,
     clearSession,
@@ -41,6 +42,42 @@ function SessionPageContent({ params }: SessionPageProps) {
   } = useSimpleSSE();
   
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Função para renderizar status de conexão
+  const renderConnectionStatus = () => {
+    if (!connectionStatus) return null;
+    
+    if (connectionStatus.reconnecting) {
+      return (
+        <div className="flex items-center space-x-2">
+          <div className="w-3 h-3 rounded-full bg-yellow-500 animate-pulse"></div>
+          <span className="text-sm font-medium text-yellow-400">
+            Reconectando... ({connectionStatus.reconnectAttempt}/{connectionStatus.maxReconnectAttempts})
+          </span>
+        </div>
+      );
+    }
+    
+    if (connectionStatus.reconnectFailed) {
+      return (
+        <div className="flex items-center space-x-2">
+          <div className="w-3 h-3 rounded-full bg-red-500"></div>
+          <span className="text-sm font-medium text-red-400">
+            Falha na reconexão
+          </span>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex items-center space-x-2">
+        <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+        <span className="text-sm font-medium">
+          {isConnected ? 'Conectado' : 'Desconectado'}
+        </span>
+      </div>
+    );
+  };
 
   useEffect(() => {
     params.then(({ publicId }) => setPublicId(publicId));
@@ -233,12 +270,7 @@ function SessionPageContent({ params }: SessionPageProps) {
           {/* Mobile Layout */}
           <div className="block sm:hidden">
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                <span className="text-sm font-medium">
-                  {isConnected ? 'Conectado' : 'Desconectado'}
-                </span>
-              </div>
+              {renderConnectionStatus()}
             </div>
             <h1 className="text-lg font-bold mb-2">
               WordStream - {sessionData?.channel}
@@ -267,12 +299,7 @@ function SessionPageContent({ params }: SessionPageProps) {
           {/* Desktop Layout */}
           <div className="hidden sm:flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                <span className="text-sm font-medium">
-                  {isConnected ? 'Conectado' : 'Desconectado'}
-                </span>
-              </div>
+              {renderConnectionStatus()}
               <h1 className="text-xl font-bold">
                 WordStream - {sessionData?.channel}
               </h1>
@@ -343,10 +370,28 @@ function SessionPageContent({ params }: SessionPageProps) {
                       Chat - {sessionData?.channel}
                     </h3>
                     <div className="flex items-center space-x-2">
-                      <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                      <span className="text-xs text-gray-300">
-                        {isConnected ? 'AO VIVO' : 'OFF'}
-                      </span>
+                      {connectionStatus?.reconnecting ? (
+                        <>
+                          <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div>
+                          <span className="text-xs text-yellow-400">
+                            RECONECTANDO
+                          </span>
+                        </>
+                      ) : connectionStatus?.reconnectFailed ? (
+                        <>
+                          <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                          <span className="text-xs text-red-400">
+                            FALHA
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                          <span className="text-xs text-gray-300">
+                            {isConnected ? 'AO VIVO' : 'OFF'}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -492,10 +537,28 @@ function SessionPageContent({ params }: SessionPageProps) {
                       Chat em Tempo Real - {sessionData?.channel}
                     </h3>
                     <div className="flex items-center space-x-2">
-                      <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                      <span className="text-xs text-gray-300">
-                        {isConnected ? 'AO VIVO' : 'DESCONECTADO'}
-                      </span>
+                      {connectionStatus?.reconnecting ? (
+                        <>
+                          <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div>
+                          <span className="text-xs text-yellow-400">
+                            RECONECTANDO
+                          </span>
+                        </>
+                      ) : connectionStatus?.reconnectFailed ? (
+                        <>
+                          <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                          <span className="text-xs text-red-400">
+                            FALHA NA RECONEXÃO
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                          <span className="text-xs text-gray-300">
+                            {isConnected ? 'AO VIVO' : 'DESCONECTADO'}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

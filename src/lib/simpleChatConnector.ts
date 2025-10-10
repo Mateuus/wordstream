@@ -17,6 +17,12 @@ export class SimpleChatConnector {
   private sessionToChannel = new Map<string, string>(); // sessionId -> channelName
   private sessionManager = RedisSessionManager.getInstance();
   private connectionCheckInterval: NodeJS.Timeout | null = null;
+  
+  // Sistema de reconexão automática
+  private reconnectAttempts = new Map<string, number>(); // channelName -> attempts
+  private reconnectTimeouts = new Map<string, NodeJS.Timeout>(); // channelName -> timeout
+  private maxReconnectAttempts = 10; // Máximo de tentativas de reconexão
+  private baseReconnectDelay = 5000; // Delay base de 5 segundos
 
   static getInstance(): SimpleChatConnector {
     if (!SimpleChatConnector.instance) {
@@ -106,6 +112,9 @@ export class SimpleChatConnector {
           type: 'connectionStatus',
           status: { isConnected: false, channel, platform: 'twitch' }
         });
+        
+        // 🔄 Iniciar processo de reconexão automática
+        this.handleDisconnection(channel, sessionId);
       });
 
       await client.connect();
@@ -166,6 +175,9 @@ export class SimpleChatConnector {
   }
 
   async disconnectFromChannel(channel: string): Promise<void> {
+    // Cancelar tentativas de reconexão se existirem
+    this.cancelReconnect(channel);
+    
     const client = this.connections.get(channel);
     if (client) {
       await client.disconnect();
@@ -226,6 +238,8 @@ export class SimpleChatConnector {
 
     // Desconectar canais inativos
     for (const channel of channelsToDisconnect) {
+      // Cancelar tentativas de reconexão antes de desconectar
+      this.cancelReconnect(channel);
       await this.disconnectFromChannel(channel);
     }
 
@@ -233,5 +247,123 @@ export class SimpleChatConnector {
     if (this.connections.size === 0) {
       this.stopConnectionCheck();
     }
+  }
+
+  /**
+   * Manipula desconexões e inicia processo de reconexão
+   */
+  private handleDisconnection(channel: string, sessionId: string): void {
+    this.scheduleReconnect(channel, sessionId);
+  }
+
+  /**
+   * Agenda uma tentativa de reconexão para um canal
+   */
+  private scheduleReconnect(channel: string, sessionId: string): void {
+    // Cancelar timeout anterior se existir
+    const existingTimeout = this.reconnectTimeouts.get(channel);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    // Obter número atual de tentativas
+    const currentAttempts = this.reconnectAttempts.get(channel) || 0;
+    
+    if (currentAttempts >= this.maxReconnectAttempts) {
+      console.log(`🚫 Máximo de tentativas de reconexão atingido para o canal: ${channel}`);
+      
+      // Notificar falha definitiva via SSE
+      broadcastToChannel(sessionId, {
+        type: 'connectionStatus',
+        status: { 
+          isConnected: false, 
+          channel, 
+          platform: 'twitch',
+          reconnectFailed: true,
+          message: 'Falha na reconexão automática'
+        }
+      });
+      
+      return;
+    }
+
+    // Calcular delay com backoff exponencial
+    const delay = Math.min(
+      this.baseReconnectDelay * Math.pow(2, currentAttempts),
+      60000 // Máximo de 60 segundos
+    );
+
+    console.log(`🔄 Agendando reconexão para ${channel} em ${delay}ms (tentativa ${currentAttempts + 1}/${this.maxReconnectAttempts})`);
+
+    // Notificar tentativa de reconexão via SSE
+    broadcastToChannel(sessionId, {
+      type: 'connectionStatus',
+      status: { 
+        isConnected: false, 
+        channel, 
+        platform: 'twitch',
+        reconnecting: true,
+        reconnectAttempt: currentAttempts + 1,
+        maxReconnectAttempts: this.maxReconnectAttempts
+      }
+    });
+
+    const timeout = setTimeout(async () => {
+      await this.attemptReconnect(channel, sessionId);
+    }, delay);
+
+    this.reconnectTimeouts.set(channel, timeout);
+  }
+
+  /**
+   * Tenta reconectar a um canal
+   */
+  private async attemptReconnect(channel: string, sessionId: string): Promise<void> {
+    try {
+      console.log(`🔄 Tentando reconectar ao canal: ${channel}`);
+      
+      // Incrementar contador de tentativas
+      const currentAttempts = this.reconnectAttempts.get(channel) || 0;
+      this.reconnectAttempts.set(channel, currentAttempts + 1);
+
+      // Remover conexão anterior se existir
+      const oldClient = this.connections.get(channel);
+      if (oldClient) {
+        try {
+          await oldClient.disconnect();
+        } catch (error) {
+          console.log('Erro ao desconectar cliente anterior:', error);
+        }
+        this.connections.delete(channel);
+      }
+
+      // Tentar reconectar
+      await this.connectToTwitch(channel, sessionId);
+      
+      // Se chegou até aqui, a reconexão foi bem-sucedida
+      console.log(`✅ Reconexão bem-sucedida para o canal: ${channel}`);
+      
+      // Limpar contadores de reconexão
+      this.reconnectAttempts.delete(channel);
+      this.reconnectTimeouts.delete(channel);
+      
+    } catch (error) {
+      console.error(`❌ Falha na reconexão para ${channel}:`, error);
+      
+      // Agendar nova tentativa
+      this.scheduleReconnect(channel, sessionId);
+    }
+  }
+
+  /**
+   * Cancela tentativas de reconexão para um canal
+   */
+  private cancelReconnect(channel: string): void {
+    const timeout = this.reconnectTimeouts.get(channel);
+    if (timeout) {
+      clearTimeout(timeout);
+      this.reconnectTimeouts.delete(channel);
+    }
+    this.reconnectAttempts.delete(channel);
   }
 }

@@ -35,6 +35,11 @@ interface ConnectionStatus {
   isConnected: boolean;
   channel: string;
   platform: 'twitch' | 'kick';
+  reconnecting?: boolean;
+  reconnectAttempt?: number;
+  maxReconnectAttempts?: number;
+  reconnectFailed?: boolean;
+  message?: string;
 }
 
 interface SimpleSSEContextType {
@@ -108,6 +113,17 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
             case 'connectionStatus':
               setConnectionStatus(data.status);
               setIsConnected(data.status.isConnected);
+              
+              // Log específico para reconexão
+              if (data.status.reconnecting) {
+                console.log(`🔄 Reconectando... Tentativa ${data.status.reconnectAttempt}/${data.status.maxReconnectAttempts}`);
+              } else if (data.status.reconnectFailed) {
+                console.log(`❌ Falha na reconexão: ${data.status.message}`);
+              } else if (data.status.isConnected) {
+                console.log(`✅ Conectado ao canal ${data.status.channel}`);
+              } else {
+                console.log(`❌ Desconectado do canal ${data.status.channel}`);
+              }
               break;
               
             case 'heartbeat':
