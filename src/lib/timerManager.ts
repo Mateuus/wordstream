@@ -57,7 +57,7 @@ export class TimerManager {
     }
     
     await this.redisSessionManager.updateSession(sessionId, {
-      timer: null
+      timer: undefined
     });
     
     console.log(`Timer stopped for session ${sessionId}`);
@@ -101,7 +101,7 @@ export class TimerManager {
         // Salvar resultado
         await this.redisSessionManager.updateSession(sessionId, {
           winner: winnerData,
-          timer: null
+          timer: undefined
         });
         
         // Parar timer

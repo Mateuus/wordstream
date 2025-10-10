@@ -2,6 +2,9 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 
+// Constantes de performance
+const MAX_CHAT_MESSAGES = 50; // Limite de mensagens para otimizar performance
+
 interface WordCount {
   word: string;
   count: number;
@@ -152,7 +155,11 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
               break;
               
             case 'chatMessage':
-              setMessages(prev => [...prev, data.message]);
+              setMessages(prev => {
+                const newMessages = [...prev, data.message];
+                // Manter apenas as últimas mensagens para performance
+                return newMessages.slice(-MAX_CHAT_MESSAGES);
+              });
               break;
               
             case 'wordUpdate':
