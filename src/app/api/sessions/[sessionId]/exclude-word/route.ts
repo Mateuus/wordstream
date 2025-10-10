@@ -28,36 +28,21 @@ export async function POST(
       );
     }
 
-    // Adicionar palavra à lista de excluídas
-    const excludedWords = sessionData.excludedWords || [];
-    if (!excludedWords.includes(word.toLowerCase())) {
-      excludedWords.push(word.toLowerCase());
-      
-      // Zerar a contagem da palavra, mas manter ela no contador
-      const wordCounts = new Map(sessionData.wordCounts);
-      const existingWord = wordCounts.get(word.toLowerCase());
-      if (existingWord) {
-        // Zerar a contagem mas manter a palavra
-        wordCounts.set(word.toLowerCase(), {
-          ...existingWord,
-          count: 0
-        });
-      }
+    // Deletar a palavra completamente do contador
+    const wordCounts = new Map(sessionData.wordCounts);
+    const existingWord = wordCounts.get(word.toLowerCase());
+    
+    if (existingWord) {
+      // Remover a palavra completamente do contador
+      wordCounts.delete(word.toLowerCase());
       
       // Recalcular total de palavras
       const newTotalWords = Array.from(wordCounts.values())
         .reduce((total, wordCount) => total + wordCount.count, 0);
       
       await redisSessionManager.updateSession(sessionId, {
-        excludedWords,
         wordCounts,
         totalWords: newTotalWords
-      });
-      
-      // Enviar atualização via SSE
-      broadcastToChannel(sessionId, {
-        type: 'excludedWordsUpdate',
-        excludedWords
       });
       
       // Enviar atualização das estatísticas
@@ -72,8 +57,7 @@ export async function POST(
 
     return NextResponse.json({ 
       success: true, 
-      message: `Palavra "${word}" excluída com sucesso`,
-      excludedWords 
+      message: `Palavra "${word}" excluída com sucesso`
     });
 
   } catch (error) {

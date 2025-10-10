@@ -37,7 +37,6 @@ function SessionPageContent({ params }: SessionPageProps) {
     connectionStatus,
     messages,
     bannedWords,
-    excludedWords,
     connectToChannel,
     clearSession,
     clearMessages,
@@ -482,9 +481,7 @@ function SessionPageContent({ params }: SessionPageProps) {
               <div className="max-h-64 overflow-y-auto">
                 {sessionStats && sessionStats.topWords.length > 0 ? (
                   <div className="space-y-2">
-                    {sessionStats.topWords
-                      .filter(wordCount => !excludedWords.includes(wordCount.word)) // Filtrar palavras excluídas
-                      .map((wordCount, index) => {
+                    {sessionStats.topWords.map((wordCount, index) => {
                         const isBanned = bannedWords.includes(wordCount.word);
                         
                         return (
@@ -700,9 +697,7 @@ function SessionPageContent({ params }: SessionPageProps) {
               <div className="max-h-96 overflow-y-auto">
                 {sessionStats && sessionStats.topWords.length > 0 ? (
                   <div className="space-y-2">
-                    {sessionStats.topWords
-                      .filter(wordCount => !excludedWords.includes(wordCount.word)) // Filtrar palavras excluídas
-                      .map((wordCount, index) => {
+                    {sessionStats.topWords.map((wordCount, index) => {
                         const isBanned = bannedWords.includes(wordCount.word);
                         
                         return (
@@ -753,7 +748,7 @@ function SessionPageContent({ params }: SessionPageProps) {
                                   className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors"
                                   title="Desbanir palavra (permanente)"
                                 >
-                                  ✅ Desbanir
+                                  ✅
                                 </button>
                               ) : (
                                 <>
@@ -762,14 +757,14 @@ function SessionPageContent({ params }: SessionPageProps) {
                                     className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
                                     title="Banir palavra (permanente)"
                                   >
-                                    🚫 Banir
+                                    🚫
                                   </button>
                                   <button
                                     onClick={() => excludeWord(wordCount.word)}
                                     className="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded transition-colors"
                                     title="Excluir palavra (pode voltar)"
                                   >
-                                    ❌ Excluir
+                                    ❌
                                   </button>
                                 </>
                               )}

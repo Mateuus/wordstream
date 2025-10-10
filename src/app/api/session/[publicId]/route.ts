@@ -42,8 +42,7 @@ export async function GET(
       ...stats,
       shareUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/session/${publicId}`,
       requiresPassword: !!session.password,
-      bannedWords: session.bannedWords || [],
-      excludedWords: session.excludedWords || []
+      bannedWords: session.bannedWords || []
     });
 
   } catch (error) {

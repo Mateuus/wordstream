@@ -20,7 +20,6 @@ interface SessionData {
   createdBy: string;
   adminKey: string; // Chave única para administrar a sessão
   bannedWords?: string[]; // Lista de palavras banidas
-  excludedWords?: string[]; // Lista de palavras excluídas
 }
 
 export class RedisSessionManager {
@@ -530,8 +529,7 @@ export class RedisSessionManager {
       lastActivity: session.lastActivity,
       isActive: session.isActive,
       createdBy: session.createdBy,
-      bannedWords: session.bannedWords || [],
-      excludedWords: session.excludedWords || []
+      bannedWords: session.bannedWords || []
     };
     
     return stats;
