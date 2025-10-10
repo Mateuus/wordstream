@@ -83,6 +83,12 @@ export class RedisPubSubManager {
     try {
       const channelName = `sse:${channel}`;
       
+      // 🔥 VERIFICAR se já existe assinatura para este canal
+      if (this.messageHandlers.has(channelName)) {
+        console.log(`⚠️ Canal '${channelName}' já está assinado, ignorando nova assinatura`);
+        return;
+      }
+      
       // Salvar handler
       this.messageHandlers.set(channelName, (messageStr: string) => {
         try {
@@ -95,6 +101,7 @@ export class RedisPubSubManager {
 
       // Assinar canal
       await this.subscriber.subscribe(channelName, this.messageHandlers.get(channelName)!);
+      console.log(`✅ Canal '${channelName}' assinado com sucesso`);
     } catch (error) {
       console.error('❌ Erro ao assinar canal:', error);
     }
