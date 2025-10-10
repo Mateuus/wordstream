@@ -19,6 +19,8 @@ interface SessionData {
   isActive: boolean;
   createdBy: string;
   adminKey: string; // Chave única para administrar a sessão
+  bannedWords?: string[]; // Lista de palavras banidas
+  excludedWords?: string[]; // Lista de palavras excluídas
 }
 
 export class RedisSessionManager {
@@ -321,6 +323,57 @@ export class RedisSessionManager {
     }
   }
 
+  async updateSession(sessionId: string, updates: Partial<SessionData>): Promise<boolean> {
+    try {
+      // Buscar sessão atual
+      const session = await this.getSession(sessionId);
+      if (!session) {
+        console.error(`❌ Sessão ${sessionId} não encontrada para atualização`);
+        return false;
+      }
+
+      // Aplicar atualizações
+      const updatedSession: SessionData = {
+        ...session,
+        ...updates,
+        lastActivity: new Date()
+      };
+
+      // Tentar atualizar no Redis primeiro
+      if (this.redis && this.redisAvailable) {
+        try {
+          await this.redis.setEx(
+            `WordStream:session:${sessionId}`, 
+            this.TTL, 
+            JSON.stringify({
+              ...updatedSession,
+              wordCounts: Array.from(updatedSession.wordCounts.entries())
+            })
+          );
+          
+          console.log(`✅ Sessão ${sessionId} atualizada no Redis`);
+          
+          // Atualizar cache local
+          this.sessions.set(sessionId, updatedSession);
+          return true;
+        } catch (redisError) {
+          console.error('❌ Erro Redis durante atualização da sessão:', redisError);
+          // Continuar para fallback
+        }
+      }
+
+      // Fallback: atualizar apenas no cache local
+      console.log(`⚠️ Redis não disponível - atualizando sessão ${sessionId} apenas no cache local`);
+      this.sessions.set(sessionId, updatedSession);
+      console.log(`💾 Sessão ${sessionId} atualizada no cache local (fallback)`);
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao atualizar sessão:', error);
+      return false;
+    }
+  }
+
   async getAllActiveSessions(): Promise<SessionData[]> {
     try {
       if (this.redis && this.redisAvailable) {
@@ -389,6 +442,17 @@ export class RedisSessionManager {
     const normalizedWord = word.toLowerCase().trim();
     if (normalizedWord.length < 2) return;
 
+    // Verificar se a palavra está banida
+    const bannedWords = session.bannedWords || [];
+    
+    if (bannedWords.includes(normalizedWord)) {
+      console.log(`🚫 Palavra "${normalizedWord}" está banida, ignorando...`);
+      return;
+    }
+    
+    // Palavras excluídas podem voltar a ser contadas se mencionadas novamente
+    // Não verificamos palavras excluídas aqui - elas podem voltar
+
     const existing = session.wordCounts.get(normalizedWord);
     if (existing) {
       existing.count++;
@@ -443,7 +507,14 @@ export class RedisSessionManager {
       return null;
     }
 
-    const topWords = Array.from(session.wordCounts.values())
+    const bannedWords = session.bannedWords || [];
+    
+    // Filtrar apenas palavras banidas da lista de top words
+    // Palavras excluídas podem voltar a aparecer se mencionadas novamente
+    const filteredWordCounts = Array.from(session.wordCounts.values())
+      .filter(wordCount => !bannedWords.includes(wordCount.word));
+    
+    const topWords = filteredWordCounts
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
@@ -453,12 +524,14 @@ export class RedisSessionManager {
       channel: session.channel,
       platform: session.platform,
       totalWords: session.totalWords,
-      uniqueWords: session.wordCounts.size,
+      uniqueWords: filteredWordCounts.length, // Contar apenas palavras não banidas
       topWords,
       createdAt: session.createdAt,
       lastActivity: session.lastActivity,
       isActive: session.isActive,
-      createdBy: session.createdBy
+      createdBy: session.createdBy,
+      bannedWords: session.bannedWords || [],
+      excludedWords: session.excludedWords || []
     };
     
     return stats;

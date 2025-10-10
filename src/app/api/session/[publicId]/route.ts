@@ -41,7 +41,9 @@ export async function GET(
     return NextResponse.json({
       ...stats,
       shareUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/session/${publicId}`,
-      requiresPassword: !!session.password
+      requiresPassword: !!session.password,
+      bannedWords: session.bannedWords || [],
+      excludedWords: session.excludedWords || []
     });
 
   } catch (error) {

@@ -49,9 +49,15 @@ interface SimpleSSEContextType {
   connectionStatus: ConnectionStatus | null;
   messages: ChatMessage[];
   sessionId: string | null;
+  bannedWords: string[];
+  excludedWords: string[];
   connectToChannel: (channel: string, platform?: 'twitch' | 'kick', existingSessionId?: string) => Promise<void>;
   clearSession: () => Promise<void>;
   clearMessages: () => void;
+  banWord: (word: string) => Promise<void>;
+  excludeWord: (word: string) => Promise<void>;
+  unbanWord: (word: string) => Promise<void>;
+  unexcludeWord: (word: string) => Promise<void>;
 }
 
 const SimpleSSEContext = createContext<SimpleSSEContextType | undefined>(undefined);
@@ -67,8 +73,27 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [bannedWords, setBannedWords] = useState<string[]>([]);
+  const [excludedWords, setExcludedWords] = useState<string[]>([]);
   
   const eventSourceRef = useRef<EventSource | null>(null);
+
+  const loadSessionWordLists = useCallback(async (sessionId: string) => {
+    try {
+      const response = await fetch(`/api/session/${sessionId}`);
+      if (response.ok) {
+        const sessionData = await response.json();
+        setBannedWords(sessionData.bannedWords || []);
+        setExcludedWords(sessionData.excludedWords || []);
+        console.log('📋 Listas de palavras carregadas:', {
+          banned: sessionData.bannedWords?.length || 0,
+          excluded: sessionData.excludedWords?.length || 0
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar listas de palavras:', error);
+    }
+  }, []);
 
   const connectToChannel = useCallback(async (channel: string, platform: 'twitch' | 'kick' = 'twitch', existingSessionId?: string) => {
     setIsLoading(true);
@@ -108,6 +133,26 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
             case 'wordUpdate':
               setSessionStats(data.stats);
               console.log('📊 Stats recebidos:', data.stats.totalWords, 'palavras');
+              
+              // Verificar se alguma palavra excluída voltou a aparecer
+              if (data.stats.topWords) {
+                data.stats.topWords.forEach((wordCount: { word: string; count: number }) => {
+                  if (excludedWords.includes(wordCount.word) && wordCount.count > 0) {
+                    console.log(`🔄 Palavra "${wordCount.word}" voltou a ser contada, removendo da lista de excluídas`);
+                    setExcludedWords(prev => prev.filter(w => w !== wordCount.word));
+                  }
+                });
+              }
+              break;
+              
+            case 'bannedWordsUpdate':
+              setBannedWords(data.bannedWords || []);
+              console.log('🚫 Palavras banidas atualizadas:', data.bannedWords);
+              break;
+              
+            case 'excludedWordsUpdate':
+              setExcludedWords(data.excludedWords || []);
+              console.log('❌ Palavras excluídas atualizadas:', data.excludedWords);
               break;
               
             case 'connectionStatus':
@@ -179,6 +224,10 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
         const data = await response.json();
         setSessionId(data.sessionId);
         console.log(`✅ Chat conectado com sucesso à sessão ${data.sessionId}`);
+        
+        // Carregar palavras banidas e excluídas da sessão
+        await loadSessionWordLists(data.sessionId);
+        
         setIsLoading(false);
       } else {
         throw new Error('Falha ao conectar ao canal');
@@ -187,7 +236,7 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
       console.error('Erro ao conectar:', error);
       setIsLoading(false);
     }
-  }, []);
+  }, [loadSessionWordLists, excludedWords]);
 
   const clearSession = useCallback(async () => {
     if (!sessionId) return;
@@ -211,6 +260,102 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
     setMessages([]);
   }, []);
 
+  const banWord = useCallback(async (word: string) => {
+    if (!sessionId) return;
+    
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/ban-word`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word })
+      });
+      
+      if (response.ok) {
+        setBannedWords(prev => [...prev, word]);
+        console.log(`🚫 Palavra "${word}" banida`);
+      }
+    } catch (error) {
+      console.error('Erro ao banir palavra:', error);
+    }
+  }, [sessionId]);
+
+  const excludeWord = useCallback(async (word: string) => {
+    if (!sessionId) return;
+    
+    // Exclusão imediata no frontend (temporária)
+    setExcludedWords(prev => [...prev, word]);
+    
+    // Remover a palavra imediatamente da visualização
+    setSessionStats(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        topWords: prev.topWords.filter(w => w.word !== word)
+      };
+    });
+    
+    console.log(`❌ Palavra "${word}" excluída temporariamente no frontend`);
+    
+    // Enviar para o servidor em background
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/exclude-word`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word })
+      });
+      
+      if (response.ok) {
+        console.log(`✅ Palavra "${word}" excluída no servidor`);
+      } else {
+        console.error(`❌ Erro ao excluir palavra no servidor: ${response.status}`);
+        // Reverter a exclusão se falhou no servidor
+        setExcludedWords(prev => prev.filter(w => w !== word));
+      }
+    } catch (error) {
+      console.error('Erro ao excluir palavra no servidor:', error);
+      // Reverter a exclusão se falhou no servidor
+      setExcludedWords(prev => prev.filter(w => w !== word));
+    }
+  }, [sessionId]);
+
+  const unbanWord = useCallback(async (word: string) => {
+    if (!sessionId) return;
+    
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/unban-word`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word })
+      });
+      
+      if (response.ok) {
+        setBannedWords(prev => prev.filter(w => w !== word));
+        console.log(`✅ Palavra "${word}" desbanida`);
+      }
+    } catch (error) {
+      console.error('Erro ao desbanir palavra:', error);
+    }
+  }, [sessionId]);
+
+  const unexcludeWord = useCallback(async (word: string) => {
+    if (!sessionId) return;
+    
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/unexclude-word`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word })
+      });
+      
+      if (response.ok) {
+        setExcludedWords(prev => prev.filter(w => w !== word));
+        console.log(`✅ Palavra "${word}" reabilitada`);
+      }
+    } catch (error) {
+      console.error('Erro ao reabilitar palavra:', error);
+    }
+  }, [sessionId]);
+
   // Cleanup
   useEffect(() => {
     return () => {
@@ -227,9 +372,15 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
     connectionStatus,
     messages,
     sessionId,
+    bannedWords,
+    excludedWords,
     connectToChannel,
     clearSession,
-    clearMessages
+    clearMessages,
+    banWord,
+    excludeWord,
+    unbanWord,
+    unexcludeWord
   };
 
   return (

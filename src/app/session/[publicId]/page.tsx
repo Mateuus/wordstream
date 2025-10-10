@@ -36,9 +36,14 @@ function SessionPageContent({ params }: SessionPageProps) {
     isConnected,
     connectionStatus,
     messages,
+    bannedWords,
+    excludedWords,
     connectToChannel,
     clearSession,
-    clearMessages
+    clearMessages,
+    banWord,
+    excludeWord,
+    unbanWord,
   } = useSimpleSSE();
   
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -477,35 +482,84 @@ function SessionPageContent({ params }: SessionPageProps) {
               <div className="max-h-64 overflow-y-auto">
                 {sessionStats && sessionStats.topWords.length > 0 ? (
                   <div className="space-y-2">
-                    {sessionStats.topWords.map((wordCount, index) => (
-                      <div
-                        key={wordCount.word}
-                        className="flex items-center justify-between p-2 bg-white bg-opacity-5 rounded-xl hover:bg-opacity-10 transition-all duration-200"
-                      >
-                        <div className="flex items-center space-x-2 flex-1 min-w-0">
-                          <span className="text-xs text-gray-600 font-mono w-4 text-center">
-                            #{index + 1}
-                          </span>
-                          <span className="text-gray-800 font-semibold text-sm truncate">
-                            {wordCount.word}
-                          </span>
-                        </div>
+                    {sessionStats.topWords
+                      .filter(wordCount => !excludedWords.includes(wordCount.word)) // Filtrar palavras excluídas
+                      .map((wordCount, index) => {
+                        const isBanned = bannedWords.includes(wordCount.word);
                         
-                        <div className="flex items-center space-x-2">
-                          <span className="text-blue-600 font-bold text-sm">
-                            {wordCount.count}
-                          </span>
-                          <div className="w-12 bg-white bg-opacity-20 rounded-full h-1.5">
-                            <div
-                              className="bg-gradient-to-r from-blue-500 to-purple-500 h-1.5 rounded-full transition-all duration-500"
-                              style={{
-                                width: `${Math.min(100, (wordCount.count / Math.max(...sessionStats.topWords.map(w => w.count))) * 100)}%`
-                              }}
-                            ></div>
+                        return (
+                          <div
+                            key={wordCount.word}
+                            className={`flex items-center justify-between p-2 rounded-xl transition-all duration-200 ${
+                              isBanned ? 'bg-red-900 bg-opacity-30 border border-red-500' : 
+                              'bg-white bg-opacity-5 hover:bg-opacity-10'
+                            }`}
+                          >
+                          <div className="flex items-center space-x-2 flex-1 min-w-0">
+                            <span className="text-xs text-gray-600 font-mono w-4 text-center">
+                              #{index + 1}
+                            </span>
+                            <span className={`font-semibold text-sm truncate ${
+                              isBanned ? 'text-red-300 line-through' :
+                              'text-gray-800'
+                            }`}>
+                              {wordCount.word}
+                            </span>
+                            {isBanned && <span className="text-red-400 text-xs">🚫</span>}
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <span className={`font-bold text-sm ${
+                              isBanned ? 'text-red-400' :
+                              'text-blue-600'
+                            }`}>
+                              {wordCount.count}
+                            </span>
+                            <div className="w-12 bg-white bg-opacity-20 rounded-full h-1.5">
+                              <div
+                                className={`h-1.5 rounded-full transition-all duration-500 ${
+                                  isBanned ? 'bg-red-500' :
+                                  'bg-gradient-to-r from-blue-500 to-purple-500'
+                                }`}
+                                style={{
+                                  width: `${Math.min(100, (wordCount.count / Math.max(...sessionStats.topWords.map(w => w.count))) * 100)}%`
+                                }}
+                              ></div>
+                            </div>
+                            
+                            {/* Botões de ação */}
+                            <div className="flex items-center space-x-1 ml-2">
+                              {isBanned ? (
+                                <button
+                                  onClick={() => unbanWord(wordCount.word)}
+                                  className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
+                                  title="Desbanir palavra (permanente)"
+                                >
+                                  ✅
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => banWord(wordCount.word)}
+                                    className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                                    title="Banir palavra (permanente)"
+                                  >
+                                    🚫
+                                  </button>
+                                  <button
+                                    onClick={() => excludeWord(wordCount.word)}
+                                    className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs rounded transition-colors"
+                                    title="Excluir palavra (pode voltar)"
+                                  >
+                                    ❌
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8">
@@ -646,35 +700,84 @@ function SessionPageContent({ params }: SessionPageProps) {
               <div className="max-h-96 overflow-y-auto">
                 {sessionStats && sessionStats.topWords.length > 0 ? (
                   <div className="space-y-2">
-                    {sessionStats.topWords.map((wordCount, index) => (
-                      <div
-                        key={wordCount.word}
-                        className="flex items-center justify-between p-3 bg-white bg-opacity-5 rounded-xl hover:bg-opacity-10 transition-all duration-200"
-                      >
-                        <div className="flex items-center space-x-3 flex-1 min-w-0">
-                          <span className="text-xs text-gray-600 font-mono w-6 text-center">
-                            #{index + 1}
-                          </span>
-                          <span className="text-gray-800 font-semibold truncate">
-                            {wordCount.word}
-                          </span>
-                        </div>
+                    {sessionStats.topWords
+                      .filter(wordCount => !excludedWords.includes(wordCount.word)) // Filtrar palavras excluídas
+                      .map((wordCount, index) => {
+                        const isBanned = bannedWords.includes(wordCount.word);
                         
-                        <div className="flex items-center space-x-3">
-                          <span className="text-blue-600 font-bold text-lg">
-                            {wordCount.count}
-                          </span>
-                          <div className="w-16 bg-white bg-opacity-20 rounded-full h-2">
-                            <div
-                              className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-                              style={{
-                                width: `${Math.min(100, (wordCount.count / Math.max(...sessionStats.topWords.map(w => w.count))) * 100)}%`
-                              }}
-                            ></div>
+                        return (
+                          <div
+                            key={wordCount.word}
+                            className={`flex items-center justify-between p-3 rounded-xl transition-all duration-200 ${
+                              isBanned ? 'bg-red-900 bg-opacity-30 border border-red-500' : 
+                              'bg-white bg-opacity-5 hover:bg-opacity-10'
+                            }`}
+                          >
+                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                            <span className="text-xs text-gray-600 font-mono w-6 text-center">
+                              #{index + 1}
+                            </span>
+                            <span className={`font-semibold truncate ${
+                              isBanned ? 'text-red-300 line-through' :
+                              'text-gray-800'
+                            }`}>
+                              {wordCount.word}
+                            </span>
+                            {isBanned && <span className="text-red-400 text-sm">🚫</span>}
+                          </div>
+                          
+                          <div className="flex items-center space-x-3">
+                            <span className={`font-bold text-lg ${
+                              isBanned ? 'text-red-400' :
+                              'text-blue-600'
+                            }`}>
+                              {wordCount.count}
+                            </span>
+                            <div className="w-16 bg-white bg-opacity-20 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full transition-all duration-500 ${
+                                  isBanned ? 'bg-red-500' :
+                                  'bg-gradient-to-r from-blue-500 to-purple-500'
+                                }`}
+                                style={{
+                                  width: `${Math.min(100, (wordCount.count / Math.max(...sessionStats.topWords.map(w => w.count))) * 100)}%`
+                                }}
+                              ></div>
+                            </div>
+                            
+                            {/* Botões de ação */}
+                            <div className="flex items-center space-x-2 ml-3">
+                              {isBanned ? (
+                                <button
+                                  onClick={() => unbanWord(wordCount.word)}
+                                  className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition-colors"
+                                  title="Desbanir palavra (permanente)"
+                                >
+                                  ✅ Desbanir
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => banWord(wordCount.word)}
+                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition-colors"
+                                    title="Banir palavra (permanente)"
+                                  >
+                                    🚫 Banir
+                                  </button>
+                                  <button
+                                    onClick={() => excludeWord(wordCount.word)}
+                                    className="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded transition-colors"
+                                    title="Excluir palavra (pode voltar)"
+                                  >
+                                    ❌ Excluir
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-12">
