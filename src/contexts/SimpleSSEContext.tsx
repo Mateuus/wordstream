@@ -1,10 +1,16 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { useDebounce, useDebouncedCallback } from '../hooks/useDebounce';
 
 // Constantes de performance
 const MAX_CHAT_MESSAGES = 50; // Limite de mensagens para otimizar performance
 const TIMER_UPDATE_INTERVAL = 1000; // Intervalo de atualização do timer em ms
+const DEBOUNCE_DELAYS = {
+  MESSAGES: 50,    // 50ms para mensagens (rápido para UX)
+  STATS: 100,      // 100ms para stats (moderado)
+  BANNED_WORDS: 200, // 200ms para palavras banidas (menos crítico)
+} as const;
 
 interface WordCount {
   word: string;
@@ -86,13 +92,11 @@ interface SimpleSSEProviderProps {
 }
 
 export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
-  const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
+  // Estados principais (sem debounce - críticos)
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [bannedWords, setBannedWords] = useState<string[]>([]);
   const [timer, setTimer] = useState<{
     isActive: boolean;
     remainingTime: number;
@@ -106,8 +110,48 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
   const [settings, setSettings] = useState<{
     wordLimit: number;
   }>({ wordLimit: 10 });
+
+  // Estados com debounce (para otimização)
+  const [pendingMessages, setPendingMessages] = useState<ChatMessage[]>([]);
+  const [pendingStats, setPendingStats] = useState<SessionStats | null>(null);
+  const [pendingBannedWords, setPendingBannedWords] = useState<string[]>([]);
+
+  // Estados finais (com debounce aplicado)
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
+  const [bannedWords, setBannedWords] = useState<string[]>([]);
+
+  // Aplicar debounce aos estados pendentes
+  const debouncedMessages = useDebounce(pendingMessages, DEBOUNCE_DELAYS.MESSAGES);
+  const debouncedStats = useDebounce(pendingStats, DEBOUNCE_DELAYS.STATS);
+  const debouncedBannedWords = useDebounce(pendingBannedWords, DEBOUNCE_DELAYS.BANNED_WORDS);
   
   const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Aplicar debounce aos estados pendentes
+  useEffect(() => {
+    if (debouncedMessages.length > 0) {
+      setMessages(prev => {
+        const newMessages = [...prev, ...debouncedMessages];
+        return newMessages.slice(-MAX_CHAT_MESSAGES);
+      });
+      setPendingMessages([]); // Limpar pendências
+    }
+  }, [debouncedMessages]);
+
+  useEffect(() => {
+    if (debouncedStats) {
+      setSessionStats(debouncedStats);
+      setPendingStats(null); // Limpar pendências
+    }
+  }, [debouncedStats]);
+
+  useEffect(() => {
+    if (debouncedBannedWords.length > 0) {
+      setBannedWords(debouncedBannedWords);
+      setPendingBannedWords([]); // Limpar pendências
+    }
+  }, [debouncedBannedWords]);
 
   const loadSessionWordLists = useCallback(async (sessionId: string) => {
     try {
@@ -156,20 +200,19 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
               break;
               
             case 'chatMessage':
-              setMessages(prev => {
-                const newMessages = [...prev, data.message];
-                // Manter apenas as últimas mensagens para performance
-                return newMessages.slice(-MAX_CHAT_MESSAGES);
-              });
+              // Usar debounce para mensagens (otimização de performance)
+              setPendingMessages(prev => [...prev, data.message]);
               break;
               
             case 'wordUpdate':
-              setSessionStats(data.stats);
+              // Usar debounce para stats (otimização de performance)
+              setPendingStats(data.stats);
               console.log('📊 Stats recebidos:', data.stats.totalWords, 'palavras');
               break;
               
             case 'bannedWordsUpdate':
-              setBannedWords(data.bannedWords || []);
+              // Usar debounce para palavras banidas (otimização de performance)
+              setPendingBannedWords(data.bannedWords || []);
               console.log('🚫 Palavras banidas atualizadas:', data.bannedWords);
               break;
               

@@ -43,7 +43,7 @@ export const WinnerDisplay: React.FC = () => {
         <div className="mb-6">
           <p className="text-lg text-gray-300 mb-3">Palavra Ganhadora:</p>
           <div 
-            className="text-4xl font-bold py-6 px-8 rounded-xl text-white mb-3 shadow-lg"
+            className="text-4xl font-bold py-6 px-8 rounded-xl text-black mb-3 shadow-lg"
             style={{ backgroundColor: winner.color }}
           >
             {winner.word}
