@@ -5,7 +5,7 @@ module.exports = {
       script: 'npm',
       args: 'start',
       cwd: '/home/mateuus/bdj/wordstream',
-      instances: 'max',
+      instances: '2',
       exec_mode: 'cluster',
       env: {
         NODE_ENV: 'development',
