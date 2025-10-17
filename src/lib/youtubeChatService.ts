@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { broadcastToSharedSession } from './sharedSSEManager';
+import { RedisSessionManager } from './redisSessionManager';
 
 export interface YouTubeChatMessage {
   id: string;
@@ -50,10 +51,12 @@ export class YouTubeChatService {
   private isPolling: boolean = false;
   private sessionId: string;
   private channelId: string;
+  private sessionManager: RedisSessionManager;
 
   constructor(sessionId: string, channelId: string, apiKey?: string) {
     this.sessionId = sessionId;
     this.channelId = channelId;
+    this.sessionManager = RedisSessionManager.getInstance();
     
     // Usar API Key do .env se não fornecida
     const finalApiKey = apiKey || process.env.YOUTUBE_API_KEY;
@@ -74,7 +77,6 @@ export class YouTubeChatService {
    */
   async startChatCapture(): Promise<boolean> {
     try {
-      console.log(`🎬 Iniciando captura do chat do YouTube para canal: ${this.channelId}`);
       
       // 1. Buscar transmissões ao vivo do canal
       const liveStream = await this.findActiveLiveStream();
@@ -84,8 +86,6 @@ export class YouTubeChatService {
       }
 
       this.liveChatId = liveStream.liveChatId;
-      console.log(`✅ Transmissão ao vivo encontrada: ${liveStream.title}`);
-      console.log(`🔗 Live Chat ID: ${this.liveChatId}`);
 
       // 2. Iniciar polling das mensagens
       this.startPolling();
@@ -183,7 +183,6 @@ export class YouTubeChatService {
     if (this.isPolling) return;
     
     this.isPolling = true;
-    console.log('🔄 Iniciando polling das mensagens do chat...');
 
     // Primeira busca imediata
     this.pollMessages();
@@ -201,7 +200,6 @@ export class YouTubeChatService {
     if (!this.liveChatId) return;
 
     try {
-      console.log('💬 Buscando mensagens do chat...');
       
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const params: any = {
@@ -217,15 +215,12 @@ export class YouTubeChatService {
       const response = await this.youtube.liveChatMessages.list(params);
       
       if (response.data.items && response.data.items.length > 0) {
-        console.log(`✅ ${response.data.items.length} mensagem(ns) encontrada(s)`);
         this.nextPageToken = response.data.nextPageToken;
         
         // Processar mensagens
         for (const item of response.data.items) {
-          this.processMessage(item);
+          await this.processMessage(item);
         }
-      } else {
-        console.log('⚠️ Nenhuma mensagem encontrada no chat (pode estar vazio ou com restrições)');
       }
     } catch (error) {
       console.error('❌ Erro ao buscar mensagens do chat:', error instanceof Error ? error.message : String(error));
@@ -241,7 +236,7 @@ export class YouTubeChatService {
   /**
    * Processa uma mensagem individual do chat
    */
-  private processMessage(item: unknown): void {
+  private async processMessage(item: unknown): Promise<void> {
     try {
       const messageItem = item as {
         id: string;
@@ -384,22 +379,6 @@ export class YouTubeChatService {
         superStickerDetails
       };
 
-      // Log detalhado da mensagem
-      console.log(`📨 [YouTube] Mensagem recebida:`, {
-        id: chatMessage.id,
-        username: chatMessage.displayName,
-        message: chatMessage.messageText,
-        type: chatMessage.type,
-        platform: 'youtube',
-        channel: this.channelId,
-        sessionId: this.sessionId,
-        timestamp: chatMessage.publishedAt,
-        badges: this.getBadges(chatMessage),
-        isOwner: chatMessage.isChatOwner,
-        isModerator: chatMessage.isChatModerator,
-        isSponsor: chatMessage.isChatSponsor,
-        isVerified: chatMessage.isVerified
-      });
 
       // Broadcast da mensagem para a sessão usando o sistema SSE existente
       broadcastToSharedSession(this.sessionId, {
@@ -424,11 +403,45 @@ export class YouTubeChatService {
         }
       });
 
-      console.log(`✅ [YouTube] Mensagem enviada para SSE: ${chatMessage.displayName}: ${chatMessage.messageText}`);
+      // Processar primeira palavra da mensagem para o contador
+      const firstWord = this.extractFirstWord(chatMessage.messageText);
+      if (firstWord) {
+        await this.sessionManager.processWord(this.sessionId, firstWord);
+        
+        // Enviar atualização de palavras
+        const stats = await this.sessionManager.getSessionStats(this.sessionId);
+        if (stats) {
+          broadcastToSharedSession(this.sessionId, {
+            type: 'wordUpdate',
+            stats: stats
+          });
+        }
+      }
       
     } catch (error) {
       console.error('❌ Erro ao processar mensagem:', error instanceof Error ? error.message : String(error));
     }
+  }
+
+  /**
+   * Extrai a primeira palavra válida da mensagem
+   */
+  private extractFirstWord(message: string): string | null {
+    // Extrair primeira palavra válida da mensagem
+    const words = message.trim().split(/\s+/);
+    const firstWord = words[0];
+    
+    if (!firstWord || firstWord.length < 2) return null;
+    
+    // Filtrar palavras muito repetitivas
+    const repeatedChars = /(.)\1{2,}/;
+    if (repeatedChars.test(firstWord)) return null;
+    
+    // Filtrar palavras muito comuns
+    const commonWords = ['kkk', 'kkkk', 'kkkkk', 'haha', 'hahaha', 'rsrs', 'rsrsrs', 'lol', 'wtf', 'omg'];
+    if (commonWords.includes(firstWord.toLowerCase())) return null;
+    
+    return firstWord;
   }
 
   /**

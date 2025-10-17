@@ -60,24 +60,14 @@ export class SimpleChatConnector {
       const actualChannel = session.channel;
       const actualPlatform = session.platform;
       
-      console.log(`🔍 Conectando sessão ${existingSessionId}:`, {
-        channel: actualChannel,
-        platform: actualPlatform,
-        sessionId: existingSessionId
-      });
-      
       if (actualPlatform === 'twitch') {
-        console.log(`🎮 Conectando ao Twitch: ${actualChannel}`);
         await this.connectToTwitch(actualChannel, existingSessionId);
       } else if (actualPlatform === 'youtube') {
-        console.log(`🎬 Conectando ao YouTube: ${actualChannel}`);
         await this.connectToYouTube(actualChannel, existingSessionId);
       } else if (actualPlatform === 'kick') {
         // Kick não implementado ainda
-        console.log(`⚡ Kick não implementado ainda: ${actualChannel}`);
         throw new Error('Kick ainda não está implementado');
       } else {
-        console.log(`❌ Plataforma não reconhecida: ${actualPlatform}`);
         throw new Error(`Plataforma não suportada: ${actualPlatform}`);
       }
       
@@ -168,27 +158,19 @@ export class SimpleChatConnector {
         return;
       }
       
-      console.log(`🎬 Conectando ao YouTube: ${channelId}`);
-      
       const youtubeService = new YouTubeChatService(sessionId, channelId);
       
-      console.log(`🔄 Iniciando captura do YouTube para sessão: ${sessionId}`);
       const started = await youtubeService.startChatCapture();
       if (started) {
         this.youtubeConnections.set(sessionId, youtubeService);
         this.sessionToChannel.set(sessionId, channelId);
-        
-        console.log(`✅ Conectado ao YouTube: ${channelId} (Sessão: ${sessionId})`);
         
         // Enviar status de conexão
         publishToSession(sessionId, {
           type: 'connectionStatus',
           status: { isConnected: true, channel: channelId, platform: 'youtube' }
         });
-        
-        console.log(`📡 Status de conexão enviado para SSE: ${sessionId}`);
       } else {
-        console.log(`❌ Falha ao iniciar captura do YouTube para: ${channelId}`);
         throw new Error('Falha ao iniciar captura do YouTube');
       }
       

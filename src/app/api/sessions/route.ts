@@ -9,39 +9,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { channel, platform = 'twitch', sessionId } = body;
 
-    console.log(`🔌 API /sessions recebeu:`, {
-      channel,
-      platform,
-      sessionId,
-      timestamp: new Date().toISOString()
-    });
-
     if (!channel) {
-      console.log(`❌ Canal não fornecido`);
       return NextResponse.json({ 
         error: 'Channel required' 
       }, { status: 400 });
     }
 
     if (!sessionId) {
-      console.log(`❌ SessionId não fornecido`);
       return NextResponse.json({ 
         error: 'SessionId is required' 
       }, { status: 400 });
     }
 
     if (!['twitch', 'kick', 'youtube'].includes(platform)) {
-      console.log(`❌ Plataforma inválida: ${platform}`);
       return NextResponse.json({ 
         error: 'Platform must be twitch, kick or youtube' 
       }, { status: 400 });
     }
 
-    console.log(`✅ Validações passaram, conectando ao canal...`);
     // Conectar ao canal usando a sessão existente (obrigatória)
     const connectedSessionId = await chatConnector.connectToChannel(channel, platform, sessionId);
-    
-    console.log(`✅ Conectado com sucesso: ${connectedSessionId}`);
     return NextResponse.json({ 
       sessionId: connectedSessionId,
       channel,
