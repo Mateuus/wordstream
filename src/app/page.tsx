@@ -342,14 +342,15 @@ export default function Home() {
                 </select>
               </div>
 
-              {platform === 'youtube' && (
-                <div className="p-3 bg-green-900 bg-opacity-50 rounded-lg">
-                  <p className="text-sm text-green-200">
-                    ✅ <strong>YouTube configurado automaticamente</strong><br/>
-                    A API Key está configurada no servidor. Apenas digite o ID do canal.
-                  </p>
-                </div>
-              )}
+        {platform === 'youtube' && (
+          <div className="p-3 bg-green-900 bg-opacity-50 rounded-lg">
+            <p className="text-sm text-green-200">
+              ✅ <strong>YouTube configurado automaticamente</strong><br/>
+              Nova implementação sem quota da API! Apenas digite o ID do canal.<br/>
+              <span className="text-blue-300">🚀 Agora usando youtube-chat (sem limites de quota)</span>
+            </p>
+          </div>
+        )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Senha (Opcional)</label>

@@ -52,6 +52,8 @@ export class YouTubeChatService {
   private sessionId: string;
   private channelId: string;
   private sessionManager: RedisSessionManager;
+  private lastLiveStreamCheck: number = 0;
+  private readonly LIVE_STREAM_CACHE_DURATION = 60000; // 1 minuto de cache
 
   constructor(sessionId: string, channelId: string, apiKey?: string) {
     this.sessionId = sessionId;
@@ -77,22 +79,24 @@ export class YouTubeChatService {
    */
   async startChatCapture(): Promise<boolean> {
     try {
+      console.log(`🎬 [YouTube] Iniciando captura para canal: ${this.channelId}`);
       
       // 1. Buscar transmissões ao vivo do canal
       const liveStream = await this.findActiveLiveStream();
       if (!liveStream) {
-        console.log('❌ Nenhuma transmissão ao vivo encontrada');
+        console.log('❌ [YouTube] Nenhuma transmissão ao vivo encontrada');
         return false;
       }
 
       this.liveChatId = liveStream.liveChatId;
+      console.log(`✅ [YouTube] Live Chat ID encontrado: ${this.liveChatId}`);
 
       // 2. Iniciar polling das mensagens
       this.startPolling();
       
       return true;
     } catch (error) {
-      console.error('❌ Erro ao iniciar captura do chat:', error);
+      console.error('❌ [YouTube] Erro ao iniciar captura do chat:', error);
       return false;
     }
   }
@@ -172,6 +176,13 @@ export class YouTubeChatService {
       };
     } catch (error) {
       console.error('❌ Erro ao buscar transmissão ao vivo:', error);
+      
+      // Verificar se é erro de quota
+      if (error instanceof Error && error.message.includes('quota')) {
+        console.error('🚫 YouTube API Quota excedida. Aguarde até amanhã para usar novamente.');
+        throw new Error('YouTube API Quota excedida. Tente novamente amanhã.');
+      }
+      
       return null;
     }
   }
@@ -187,10 +198,10 @@ export class YouTubeChatService {
     // Primeira busca imediata
     this.pollMessages();
 
-    // Configurar polling a cada 3 segundos (recomendado pela API)
+    // Configurar polling a cada 5 segundos (otimizado para reduzir uso da API)
     this.pollingInterval = setInterval(() => {
       this.pollMessages();
-    }, 3000);
+    }, 5000);
   }
 
   /**

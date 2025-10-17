@@ -1,7 +1,7 @@
 import tmi from 'tmi.js';
 import { publishToSession } from './sessionChannelManager';
 import { RedisSessionManager } from './redisSessionManager';
-import { YouTubeChatService } from './youtubeChatService';
+import { YouTubeChatServiceV2 } from './youtubeChatServiceV2';
 
 interface ChatMessage {
   id: string;
@@ -15,7 +15,7 @@ interface ChatMessage {
 export class SimpleChatConnector {
   private static instance: SimpleChatConnector;
   private connections = new Map<string, tmi.Client>(); // channelName -> client
-  private youtubeConnections = new Map<string, YouTubeChatService>(); // sessionId -> youtubeService
+  private youtubeConnections = new Map<string, YouTubeChatServiceV2>(); // sessionId -> youtubeService
   private sessionToChannel = new Map<string, string>(); // sessionId -> channelName
   private sessionManager = RedisSessionManager.getInstance();
   private connectionCheckInterval: NodeJS.Timeout | null = null;
@@ -158,7 +158,7 @@ export class SimpleChatConnector {
         return;
       }
       
-      const youtubeService = new YouTubeChatService(sessionId, channelId);
+      const youtubeService = new YouTubeChatServiceV2(sessionId, channelId);
       
       const started = await youtubeService.startChatCapture();
       if (started) {
@@ -176,6 +176,12 @@ export class SimpleChatConnector {
       
     } catch (error) {
       console.error('Erro ao conectar ao YouTube:', error);
+      
+      // Tratamento específico para erro de quota do YouTube
+      if (error instanceof Error && error.message.includes('quota')) {
+        throw new Error('YouTube API Quota excedida. Tente novamente amanhã.');
+      }
+      
       throw error;
     }
   }

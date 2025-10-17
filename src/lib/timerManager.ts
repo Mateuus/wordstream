@@ -63,6 +63,9 @@ export class TimerManager {
           remainingTime,
           duration
         });
+      } else {
+        clearInterval(updateInterval);
+        this.updateIntervals.delete(sessionId);
       }
     }, 1000); // Atualizar a cada segundo
     
