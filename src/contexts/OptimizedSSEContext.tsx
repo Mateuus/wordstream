@@ -41,6 +41,10 @@ function SSEConnectionManager({ children }: OptimizedSSEProviderProps) {
           updateBannedWords(data.bannedWords || []);
           break;
           
+        case 'timerUpdate':
+          updateTimer(data.timer);
+          break;
+          
         case 'timerFinished':
           updateWinner(data.winner);
           updateTimer(null);
