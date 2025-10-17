@@ -22,7 +22,7 @@ interface SessionStats {
   sessionId: string;
   publicId?: string;
   channel: string;
-  platform: 'twitch' | 'kick';
+  platform: 'twitch' | 'kick' | 'youtube';
   totalWords: number;
   uniqueWords: number;
   topWords: WordCount[];
@@ -37,14 +37,14 @@ interface ChatMessage {
   username: string;
   message: string;
   timestamp: Date;
-  platform: 'twitch' | 'kick';
+  platform: 'twitch' | 'kick' | 'youtube';
   channel: string;
 }
 
 interface ConnectionStatus {
   isConnected: boolean;
   channel: string;
-  platform: 'twitch' | 'kick';
+  platform: 'twitch' | 'kick' | 'youtube';
   reconnecting?: boolean;
   reconnectAttempt?: number;
   maxReconnectAttempts?: number;
@@ -73,7 +73,7 @@ interface SimpleSSEContextType {
   settings: {
     wordLimit: number;
   };
-  connectToChannel: (channel: string, platform?: 'twitch' | 'kick', existingSessionId?: string, isOverlay?: boolean) => Promise<void>;
+  connectToChannel: (channel: string, platform?: 'twitch' | 'kick' | 'youtube', existingSessionId?: string, isOverlay?: boolean) => Promise<void>;
   clearSession: () => Promise<void>;
   clearMessages: () => void;
   banWord: (word: string) => Promise<void>;
@@ -169,7 +169,7 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
     }
   }, []);
 
-  const connectToChannel = useCallback(async (channel: string, platform: 'twitch' | 'kick' = 'twitch', existingSessionId?: string, isOverlay: boolean = false) => {
+  const connectToChannel = useCallback(async (channel: string, platform: 'twitch' | 'kick' | 'youtube' = 'twitch', existingSessionId?: string, isOverlay: boolean = false) => {
     setIsLoading(true);
     try {
       // 🆕 Primeiro: Conectar ao SSE ANTES de conectar o chat

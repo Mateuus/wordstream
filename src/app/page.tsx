@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 export default function Home() {
   const [channel, setChannel] = useState<string>('');
-  const [platform, setPlatform] = useState<'twitch' | 'kick'>('twitch');
+  const [platform, setPlatform] = useState<'twitch' | 'kick' | 'youtube'>('twitch');
   const [password, setPassword] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{error?: string; message?: string; shareUrl?: string} | null>(null);
@@ -171,7 +171,7 @@ export default function Home() {
                 </p>
                 <p className="text-sm sm:text-base md:text-lg text-gray-400 mb-12 max-w-3xl mx-auto px-4">
                   Processamento centralizado no servidor com atualizações instantâneas via SSE. 
-                  Conecte-se ao chat da Twitch ou Kick e veja as palavras mais mencionadas em tempo real.
+                  Conecte-se ao chat da Twitch, Kick ou YouTube e veja as palavras mais mencionadas em tempo real.
                 </p>
               </div>
 
@@ -183,11 +183,12 @@ export default function Home() {
                   <div className="w-full">
                     <select
                       value={platform}
-                      onChange={(e) => setPlatform(e.target.value as 'twitch' | 'kick')}
+                      onChange={(e) => setPlatform(e.target.value as 'twitch' | 'kick' | 'youtube')}
                       className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
                     >
                       <option value="twitch">🎮 Twitch</option>
                       <option value="kick">⚡ Kick</option>
+                      <option value="youtube">🎬 YouTube</option>
                     </select>
                   </div>
                   
@@ -197,7 +198,7 @@ export default function Home() {
                       type="text"
                       value={channel}
                       onChange={(e) => setChannel(e.target.value)}
-                      placeholder={`Nome do canal no ${platform === 'twitch' ? 'Twitch' : 'Kick'}`}
+                      placeholder={`Nome do canal no ${platform === 'twitch' ? 'Twitch' : platform === 'kick' ? 'Kick' : 'YouTube'}`}
                       className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-center"
                       onKeyPress={(e) => e.key === 'Enter' && handleGoToSession()}
                     />
@@ -332,13 +333,23 @@ export default function Home() {
                 <label className="block text-sm font-medium text-gray-300 mb-2">Plataforma</label>
                 <select
                   value={platform}
-                  onChange={(e) => setPlatform(e.target.value as 'twitch' | 'kick')}
+                  onChange={(e) => setPlatform(e.target.value as 'twitch' | 'kick' | 'youtube')}
                   className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="twitch">🎮 Twitch</option>
                   <option value="kick">⚡ Kick</option>
+                  <option value="youtube">🎬 YouTube</option>
                 </select>
               </div>
+
+              {platform === 'youtube' && (
+                <div className="p-3 bg-green-900 bg-opacity-50 rounded-lg">
+                  <p className="text-sm text-green-200">
+                    ✅ <strong>YouTube configurado automaticamente</strong><br/>
+                    A API Key está configurada no servidor. Apenas digite o ID do canal.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Senha (Opcional)</label>

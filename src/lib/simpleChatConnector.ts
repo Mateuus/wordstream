@@ -1,19 +1,21 @@
 import tmi from 'tmi.js';
 import { publishToSession } from './sessionChannelManager';
 import { RedisSessionManager } from './redisSessionManager';
+import { YouTubeChatService } from './youtubeChatService';
 
 interface ChatMessage {
   id: string;
   username: string;
   message: string;
   timestamp: Date;
-  platform: 'twitch' | 'kick';
+  platform: 'twitch' | 'kick' | 'youtube';
   channel: string;
 }
 
 export class SimpleChatConnector {
   private static instance: SimpleChatConnector;
   private connections = new Map<string, tmi.Client>(); // channelName -> client
+  private youtubeConnections = new Map<string, YouTubeChatService>(); // sessionId -> youtubeService
   private sessionToChannel = new Map<string, string>(); // sessionId -> channelName
   private sessionManager = RedisSessionManager.getInstance();
   private connectionCheckInterval: NodeJS.Timeout | null = null;
@@ -36,7 +38,7 @@ export class SimpleChatConnector {
     return SimpleChatConnector.instance;
   }
 
-  async connectToChannel(channel: string, _platform: 'twitch' | 'kick' = 'twitch', existingSessionId?: string): Promise<string> {
+  async connectToChannel(channel: string, _platform: 'twitch' | 'kick' | 'youtube' = 'twitch', existingSessionId?: string): Promise<string> {
     try {
       // SEMPRE usar a sessão existente fornecida
       if (!existingSessionId) {
@@ -58,8 +60,25 @@ export class SimpleChatConnector {
       const actualChannel = session.channel;
       const actualPlatform = session.platform;
       
+      console.log(`🔍 Conectando sessão ${existingSessionId}:`, {
+        channel: actualChannel,
+        platform: actualPlatform,
+        sessionId: existingSessionId
+      });
+      
       if (actualPlatform === 'twitch') {
+        console.log(`🎮 Conectando ao Twitch: ${actualChannel}`);
         await this.connectToTwitch(actualChannel, existingSessionId);
+      } else if (actualPlatform === 'youtube') {
+        console.log(`🎬 Conectando ao YouTube: ${actualChannel}`);
+        await this.connectToYouTube(actualChannel, existingSessionId);
+      } else if (actualPlatform === 'kick') {
+        // Kick não implementado ainda
+        console.log(`⚡ Kick não implementado ainda: ${actualChannel}`);
+        throw new Error('Kick ainda não está implementado');
+      } else {
+        console.log(`❌ Plataforma não reconhecida: ${actualPlatform}`);
+        throw new Error(`Plataforma não suportada: ${actualPlatform}`);
       }
       
       // Iniciar verificação periódica de conexões SSE
@@ -141,6 +160,44 @@ export class SimpleChatConnector {
     }
   }
 
+  private async connectToYouTube(channelId: string, sessionId: string): Promise<void> {
+    try {
+      // Verificar se já existe conexão para este sessionId
+      if (this.youtubeConnections.has(sessionId)) {
+        this.sessionToChannel.set(sessionId, channelId);
+        return;
+      }
+      
+      console.log(`🎬 Conectando ao YouTube: ${channelId}`);
+      
+      const youtubeService = new YouTubeChatService(sessionId, channelId);
+      
+      console.log(`🔄 Iniciando captura do YouTube para sessão: ${sessionId}`);
+      const started = await youtubeService.startChatCapture();
+      if (started) {
+        this.youtubeConnections.set(sessionId, youtubeService);
+        this.sessionToChannel.set(sessionId, channelId);
+        
+        console.log(`✅ Conectado ao YouTube: ${channelId} (Sessão: ${sessionId})`);
+        
+        // Enviar status de conexão
+        publishToSession(sessionId, {
+          type: 'connectionStatus',
+          status: { isConnected: true, channel: channelId, platform: 'youtube' }
+        });
+        
+        console.log(`📡 Status de conexão enviado para SSE: ${sessionId}`);
+      } else {
+        console.log(`❌ Falha ao iniciar captura do YouTube para: ${channelId}`);
+        throw new Error('Falha ao iniciar captura do YouTube');
+      }
+      
+    } catch (error) {
+      console.error('Erro ao conectar ao YouTube:', error);
+      throw error;
+    }
+  }
+
   private async processMessage(sessionId: string, message: ChatMessage): Promise<void> {
     try {
       // Publicar mensagem de chat no canal da sessão
@@ -190,11 +247,23 @@ export class SimpleChatConnector {
     // Cancelar tentativas de reconexão se existirem
     this.cancelReconnect(channel);
     
+    // Desconectar Twitch
     const client = this.connections.get(channel);
     if (client) {
       await client.disconnect();
       this.connections.delete(channel);
-      console.log(`🔌 Desconectado do canal: ${channel}`);
+      console.log(`🔌 Desconectado do canal Twitch: ${channel}`);
+    }
+    
+    // Desconectar YouTube (buscar por sessionId)
+    for (const [sessionId, youtubeService] of this.youtubeConnections.entries()) {
+      const mappedChannel = this.sessionToChannel.get(sessionId);
+      if (mappedChannel === channel) {
+        youtubeService.stopChatCapture();
+        this.youtubeConnections.delete(sessionId);
+        console.log(`🔌 Desconectado do canal YouTube: ${channel}`);
+        break;
+      }
     }
   }
 
@@ -271,9 +340,10 @@ export class SimpleChatConnector {
    * Desconecta de um canal específico (método privado)
    */
   private disconnectFromChannelPrivate(channel: string, reason: string): void {
+    // Desconectar Twitch
     const client = this.connections.get(channel);
     if (client) {
-      console.log(`🔌 Desconectando do canal ${channel}: ${reason}`);
+      console.log(`🔌 Desconectando do canal Twitch ${channel}: ${reason}`);
       
       // Desconectar cliente
       client.disconnect().catch(console.error);
@@ -297,7 +367,20 @@ export class SimpleChatConnector {
         this.reconnectTimeouts.delete(channel);
       }
       
-      console.log(`✅ Desconectado do canal ${channel}`);
+      console.log(`✅ Desconectado do canal Twitch ${channel}`);
+    }
+    
+    // Desconectar YouTube
+    for (const [sessionId, youtubeService] of this.youtubeConnections.entries()) {
+      const mappedChannel = this.sessionToChannel.get(sessionId);
+      if (mappedChannel === channel) {
+        console.log(`🔌 Desconectando do canal YouTube ${channel}: ${reason}`);
+        youtubeService.stopChatCapture();
+        this.youtubeConnections.delete(sessionId);
+        this.sessionToChannel.delete(sessionId);
+        console.log(`✅ Desconectado do canal YouTube ${channel}`);
+        break;
+      }
     }
   }
 
@@ -338,7 +421,7 @@ export class SimpleChatConnector {
     }
 
     // Se não há mais conexões, parar a verificação
-    if (this.connections.size === 0) {
+    if (this.connections.size === 0 && this.youtubeConnections.size === 0) {
       this.stopConnectionCheck();
       this.stopSSEConnectionCheck();
     }
@@ -373,7 +456,7 @@ export class SimpleChatConnector {
         status: {
           isConnected: false,
           channel,
-          platform: 'twitch',
+          platform: 'youtube', // Será atualizado baseado na sessão
           reconnectFailed: true,
           message: 'Falha na reconexão automática'
         }
@@ -396,7 +479,7 @@ export class SimpleChatConnector {
       status: { 
         isConnected: false, 
         channel, 
-        platform: 'twitch',
+        platform: 'youtube', // Será atualizado baseado na sessão
         reconnecting: true,
         reconnectAttempt: currentAttempts + 1,
         maxReconnectAttempts: this.maxReconnectAttempts
@@ -432,8 +515,18 @@ export class SimpleChatConnector {
         this.connections.delete(channel);
       }
 
-      // Tentar reconectar
-      await this.connectToTwitch(channel, sessionId);
+      // Tentar reconectar baseado na plataforma
+      const session = await this.sessionManager.getSessionByPublicId(sessionId);
+      if (session) {
+        if (session.platform === 'twitch') {
+          await this.connectToTwitch(channel, sessionId);
+        } else if (session.platform === 'youtube') {
+          await this.connectToYouTube(channel, sessionId);
+        } else if (session.platform === 'kick') {
+          // Kick não implementado ainda
+          throw new Error('Kick ainda não está implementado');
+        }
+      }
       
       // Se chegou até aqui, a reconexão foi bem-sucedida
       console.log(`✅ Reconexão bem-sucedida para o canal: ${channel}`);

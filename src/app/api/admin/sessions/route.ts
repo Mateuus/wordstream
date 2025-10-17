@@ -15,9 +15,9 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (!['twitch', 'kick'].includes(platform)) {
+    if (!['twitch', 'kick', 'youtube'].includes(platform)) {
       return NextResponse.json({ 
-        error: 'Platform must be twitch or kick' 
+        error: 'Platform must be twitch, kick or youtube' 
       }, { status: 400 });
     }
 

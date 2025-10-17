@@ -25,7 +25,7 @@ function SessionPageContent({ params }: SessionPageProps) {
   const [publicId, setPublicId] = useState<string>('');
   const [sessionData, setSessionData] = useState<{
     channel: string;
-    platform: 'twitch' | 'kick';
+    platform: 'twitch' | 'kick' | 'youtube';
     sessionId: string;
     publicId: string;
   } | null>(null);

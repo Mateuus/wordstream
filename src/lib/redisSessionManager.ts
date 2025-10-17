@@ -10,7 +10,7 @@ interface SessionData {
   id: string;
   publicId: string;
   channel: string;
-  platform: 'twitch' | 'kick';
+  platform: 'twitch' | 'kick' | 'youtube';
   password?: string;
   wordCounts: Map<string, WordCount>;
   totalWords: number;
@@ -168,7 +168,7 @@ export class RedisSessionManager {
 
   async createSession(
     channel: string,
-    platform: 'twitch' | 'kick' = 'twitch',
+    platform: 'twitch' | 'kick' | 'youtube' = 'twitch',
     createdBy: string = 'admin',
     password?: string
   ): Promise<{ sessionId: string; publicId: string; adminKey: string }> {
@@ -505,7 +505,7 @@ export class RedisSessionManager {
     sessionId: string;
     publicId: string;
     channel: string;
-    platform: 'twitch' | 'kick';
+    platform: 'twitch' | 'kick' | 'youtube';
     totalWords: number;
     uniqueWords: number;
     topWords: WordCount[];
