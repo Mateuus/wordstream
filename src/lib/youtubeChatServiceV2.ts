@@ -37,6 +37,8 @@ export class YouTubeChatServiceV2 {
   private channelId: string;
   private sessionManager: RedisSessionManager;
   private isCapturing: boolean = false;
+  private lastActivity: number = Date.now();
+  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   constructor(sessionId: string, channelId: string) {
     this.sessionId = sessionId;
@@ -67,6 +69,8 @@ export class YouTubeChatServiceV2 {
       
       if (started) {
         this.isCapturing = true;
+        this.lastActivity = Date.now();
+        this.startHeartbeat();
         console.log(`✅ [YouTube V2] Captura iniciada com sucesso para canal: ${this.channelId}`);
         return true;
       } else {
@@ -84,9 +88,16 @@ export class YouTubeChatServiceV2 {
    */
   stopChatCapture(): void {
     if (this.liveChat && this.isCapturing) {
-      this.liveChat.stop();
-      this.isCapturing = false;
-      console.log(`🛑 [YouTube V2] Captura interrompida para canal: ${this.channelId}`);
+      try {
+        this.stopHeartbeat();
+        this.liveChat.stop();
+        console.log(`🛑 [YouTube V2] Captura interrompida para canal: ${this.channelId}`);
+      } catch (error) {
+        console.error('❌ [YouTube V2] Erro ao parar captura:', error);
+      } finally {
+        this.isCapturing = false;
+        this.liveChat = null;
+      }
     }
   }
 
@@ -109,6 +120,15 @@ export class YouTubeChatServiceV2 {
     // Evento de erro
     this.liveChat.on('error', (error: unknown) => {
       console.error('❌ [YouTube V2] Erro no chat:', error);
+      
+      // Se for erro 400 (Bad Request), pode indicar que a live não existe mais
+      if (error && typeof error === 'object' && 'status' in error) {
+        const axiosError = error as { status: number; code?: string };
+        if (axiosError.status === 400) {
+          console.log('🔄 [YouTube V2] Erro 400 detectado - possivelmente live encerrada, parando captura');
+          this.stopChatCapture();
+        }
+      }
     });
 
     // Evento de fim
@@ -123,6 +143,9 @@ export class YouTubeChatServiceV2 {
    */
   private async processChatMessage(chatItem: unknown): Promise<void> {
     try {
+      // Atualizar última atividade
+      this.lastActivity = Date.now();
+      
       // Validar se chatItem é válido
       if (!chatItem || typeof chatItem !== 'object') {
         console.warn('⚠️ [YouTube V2] ChatItem inválido recebido:', chatItem);
@@ -299,5 +322,77 @@ export class YouTubeChatServiceV2 {
    */
   isActive(): boolean {
     return this.isCapturing && this.liveChat !== null;
+  }
+
+  /**
+   * Inicia o sistema de heartbeat para monitorar a conexão
+   */
+  private startHeartbeat(): void {
+    this.stopHeartbeat(); // Garantir que não há heartbeat duplicado
+    
+    this.heartbeatInterval = setInterval(() => {
+      const now = Date.now();
+      const timeSinceLastActivity = now - this.lastActivity;
+      
+      // Se não há atividade há mais de 2 minutos, verificar se ainda há usuários conectados
+      if (timeSinceLastActivity > 2 * 60 * 1000) {
+        this.checkIfShouldDisconnect();
+      }
+    }, 30000); // Verificar a cada 30 segundos
+  }
+
+  /**
+   * Para o sistema de heartbeat
+   */
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
+  /**
+   * Verifica se deve desconectar baseado na atividade da sessão
+   */
+  private async checkIfShouldDisconnect(): Promise<void> {
+    try {
+      // Verificar se há conexões SSE ativas para esta sessão
+      const hasActiveConnections = await this.hasActiveSSEConnections();
+      
+      if (!hasActiveConnections) {
+        console.log(`🔌 [YouTube V2] Sem usuários conectados há mais de 2 minutos, desconectando: ${this.channelId}`);
+        this.stopChatCapture();
+        
+        // Notificar via Redis que a sessão foi desconectada por inatividade
+        const { broadcastToSharedSession } = await import('./sharedSSEManager');
+        broadcastToSharedSession(this.sessionId, {
+          type: 'connectionStatus',
+          status: { 
+            isConnected: false, 
+            channel: this.channelId, 
+            platform: 'youtube',
+            message: 'Conexão desconectada automaticamente - sessão sem usuários'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('❌ [YouTube V2] Erro ao verificar conexões ativas:', error);
+    }
+  }
+
+  /**
+   * Verifica se há conexões SSE ativas para esta sessão
+   */
+  private async hasActiveSSEConnections(): Promise<boolean> {
+    try {
+      const { getSharedSessionStats } = await import('./sharedSSEManager');
+      const stats = getSharedSessionStats();
+      
+      const session = stats.sessions.find(s => s.publicId === this.sessionId);
+      return session ? session.connections > 0 : false;
+    } catch (error) {
+      console.error('❌ [YouTube V2] Erro ao verificar estatísticas da sessão:', error);
+      return false;
+    }
   }
 }
