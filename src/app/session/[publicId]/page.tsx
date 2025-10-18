@@ -100,14 +100,6 @@ function SessionPageContent({ params }: SessionPageProps) {
             {connectionStatus.message}
           </span>
         )}
-        <button
-          onClick={restartConnections}
-          disabled={sseLoading}
-          className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-xs rounded transition-colors"
-          title="Reiniciar conexões do chat (YouTube e Twitch)"
-        >
-          {sseLoading ? '⏳' : '🔄'} Reiniciar
-        </button>
       </div>
     );
   };
