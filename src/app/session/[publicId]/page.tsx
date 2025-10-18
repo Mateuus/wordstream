@@ -50,6 +50,8 @@ function SessionPageContent({ params }: SessionPageProps) {
     excludeWord,
     unbanWord,
     clearCounter,
+    restartConnections,
+    isLoading: sseLoading
   } = useSimpleSSE();
   
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -76,6 +78,13 @@ function SessionPageContent({ params }: SessionPageProps) {
           <span className="text-sm font-medium text-red-400">
             Falha na reconexão
           </span>
+          <button
+            onClick={restartConnections}
+            disabled={sseLoading}
+            className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-xs rounded transition-colors"
+          >
+            {sseLoading ? '⏳' : '🔄'} Reiniciar
+          </button>
         </div>
       );
     }
@@ -86,6 +95,19 @@ function SessionPageContent({ params }: SessionPageProps) {
         <span className="text-sm font-medium">
           {isConnected ? 'Conectado' : 'Desconectado'}
         </span>
+        {connectionStatus.message && (
+          <span className="text-xs text-gray-400 ml-2">
+            {connectionStatus.message}
+          </span>
+        )}
+        <button
+          onClick={restartConnections}
+          disabled={sseLoading}
+          className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-xs rounded transition-colors"
+          title="Reiniciar conexões do chat (YouTube e Twitch)"
+        >
+          {sseLoading ? '⏳' : '🔄'} Reiniciar
+        </button>
       </div>
     );
   };

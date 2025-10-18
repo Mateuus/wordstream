@@ -84,6 +84,7 @@ interface SimpleSSEContextType {
   adjustTimer: (seconds: number) => Promise<void>;
   clearCounter: () => Promise<void>;
   updateSettings: (settings: { wordLimit?: number; bannedWords?: string[] }) => Promise<void>;
+  restartConnections: () => Promise<void>;
 }
 
 const SimpleSSEContext = createContext<SimpleSSEContextType | undefined>(undefined);
@@ -507,6 +508,63 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
     }
   }, [sessionId]);
 
+  const restartConnections = useCallback(async () => {
+    if (!sessionId) {
+      console.warn('⚠️ Tentativa de reiniciar conexões sem sessionId');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      console.log(`🔄 Reiniciando conexões para sessão: ${sessionId}`);
+      
+      const response = await fetch(`/api/sessions/${sessionId}/restart`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Conexões reiniciadas com sucesso:', data);
+        
+        // Atualizar status de conexão
+        setIsConnected(true);
+        setConnectionStatus(prev => prev ? {
+          ...prev,
+          isConnected: true,
+          message: 'Conexões reiniciadas com sucesso'
+        } : null);
+        
+        // Mostrar notificação de sucesso
+        console.log(`🔄 Plataformas reiniciadas: ${data.platforms?.join(', ') || 'N/A'}`);
+        if (data.details) {
+          data.details.forEach((detail: string) => console.log(`📋 ${detail}`));
+        }
+      } else {
+        const error = await response.json();
+        console.error('❌ Erro ao reiniciar conexões:', error.error);
+        
+        // Atualizar status de erro
+        setConnectionStatus(prev => prev ? {
+          ...prev,
+          isConnected: false,
+          message: `Erro ao reiniciar: ${error.error}`
+        } : null);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao reiniciar conexões:', error);
+      
+      // Atualizar status de erro
+      setConnectionStatus(prev => prev ? {
+        ...prev,
+        isConnected: false,
+        message: 'Erro de conexão ao reiniciar'
+      } : null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sessionId]);
+
   // Timer agora é atualizado via eventos SSE do backend
   // Removido intervalo local para evitar conflitos
 
@@ -540,7 +598,8 @@ export function SimpleSSEProvider({ children }: SimpleSSEProviderProps) {
     stopTimer,
     adjustTimer,
     clearCounter,
-    updateSettings
+    updateSettings,
+    restartConnections
   };
 
   return (

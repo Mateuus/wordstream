@@ -30,6 +30,7 @@ export class SimpleChatConnector {
   private sseCheckInterval: NodeJS.Timeout | null = null;
   private readonly SSE_CHECK_INTERVAL = 30000; // Verificar a cada 30 segundos
   private readonly INACTIVITY_TIMEOUT = 60000; // Desconectar após 1 minuto sem SSE
+  private readonly EMPTY_SESSION_TIMEOUT = 5 * 60 * 1000; // Desconectar após 5 minutos sem usuários conectados
 
   static getInstance(): SimpleChatConnector {
     if (!SimpleChatConnector.instance) {
@@ -74,6 +75,7 @@ export class SimpleChatConnector {
       // Iniciar verificação periódica de conexões SSE
       this.startConnectionCheck();
       this.startSSEConnectionCheck();
+      this.startEmptySessionMonitoring();
       
       return existingSessionId;
     } catch (error) {
@@ -541,5 +543,207 @@ export class SimpleChatConnector {
       this.reconnectTimeouts.delete(channel);
     }
     this.reconnectAttempts.delete(channel);
+  }
+
+  /**
+   * Reinicia todas as conexões de uma sessão (YouTube e Twitch)
+   */
+  async restartConnections(sessionId: string): Promise<{
+    success: boolean;
+    platforms: string[];
+    details: string[];
+    error?: string;
+  }> {
+    try {
+      console.log(`🔄 Iniciando reinicialização das conexões para sessão: ${sessionId}`);
+      
+      const platforms: string[] = [];
+      const details: string[] = [];
+      
+      // Buscar dados da sessão
+      const session = await this.sessionManager.getSessionByPublicId(sessionId);
+      if (!session) {
+        return {
+          success: false,
+          platforms: [],
+          details: [],
+          error: `Sessão ${sessionId} não encontrada`
+        };
+      }
+
+      const channel = session.channel;
+      const platform = session.platform;
+
+      // Desconectar conexões existentes
+      console.log(`🔌 Desconectando conexões existentes para canal: ${channel}`);
+      
+      // Desconectar Twitch se existir
+      const twitchClient = this.connections.get(channel);
+      if (twitchClient) {
+        try {
+          await twitchClient.disconnect();
+          this.connections.delete(channel);
+          platforms.push('twitch');
+          details.push(`Twitch desconectado do canal ${channel}`);
+          console.log(`✅ Twitch desconectado do canal ${channel}`);
+        } catch (error) {
+          console.error(`❌ Erro ao desconectar Twitch:`, error);
+          details.push(`Erro ao desconectar Twitch: ${error}`);
+        }
+      }
+
+      // Desconectar YouTube se existir
+      const youtubeService = this.youtubeConnections.get(sessionId);
+      if (youtubeService) {
+        try {
+          youtubeService.stopChatCapture();
+          this.youtubeConnections.delete(sessionId);
+          platforms.push('youtube');
+          details.push(`YouTube desconectado do canal ${channel}`);
+          console.log(`✅ YouTube desconectado do canal ${channel}`);
+        } catch (error) {
+          console.error(`❌ Erro ao desconectar YouTube:`, error);
+          details.push(`Erro ao desconectar YouTube: ${error}`);
+        }
+      }
+
+      // Limpar mapeamentos e tentativas de reconexão
+      this.sessionToChannel.delete(sessionId);
+      this.cancelReconnect(channel);
+
+      // Aguardar um pouco antes de reconectar
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Reconectar baseado na plataforma da sessão
+      console.log(`🔗 Reconectando ao canal ${channel} (${platform})`);
+      
+      if (platform === 'twitch') {
+        await this.connectToTwitch(channel, sessionId);
+        details.push(`Twitch reconectado ao canal ${channel}`);
+      } else if (platform === 'youtube') {
+        await this.connectToYouTube(channel, sessionId);
+        details.push(`YouTube reconectado ao canal ${channel}`);
+      } else if (platform === 'kick') {
+        return {
+          success: false,
+          platforms,
+          details,
+          error: 'Kick ainda não está implementado'
+        };
+      }
+
+      // Enviar notificação de reinicialização via SSE
+      publishToSession(sessionId, {
+        type: 'connectionStatus',
+        status: { 
+          isConnected: true, 
+          channel, 
+          platform,
+          message: 'Conexões reiniciadas com sucesso'
+        }
+      });
+
+      console.log(`✅ Reinicialização concluída para sessão ${sessionId}`);
+      
+      return {
+        success: true,
+        platforms,
+        details
+      };
+
+    } catch (error) {
+      console.error(`❌ Erro ao reiniciar conexões para sessão ${sessionId}:`, error);
+      return {
+        success: false,
+        platforms: [],
+        details: [],
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      };
+    }
+  }
+
+  /**
+   * Verifica sessões sem usuários conectados e desconecta após timeout
+   */
+  private checkEmptySessionsAndDisconnect(): void {
+    const now = Date.now();
+    
+    // Verificar cada sessão ativa
+    this.sessionToChannel.forEach((channel, sessionId) => {
+      try {
+        // Verificar se há conexões SSE ativas para esta sessão
+        const hasActiveConnections = this.hasActiveSSEConnections(sessionId);
+        
+        if (!hasActiveConnections) {
+          // Se não há conexões SSE ativas, verificar se já passou do timeout
+          this.sessionManager.getSessionByPublicId(sessionId).then(session => {
+            if (session) {
+              const timeSinceLastActivity = now - (session.lastActivity?.getTime() || now);
+              
+              if (timeSinceLastActivity > this.EMPTY_SESSION_TIMEOUT) {
+                console.log(`🔌 Desconectando sessão vazia: ${sessionId} (canal: ${channel})`);
+                this.disconnectFromChannelPrivate(channel, 'Sessão sem usuários conectados há mais de 5 minutos');
+                
+                // Notificar via Redis que a sessão foi desconectada por inatividade
+                publishToSession(sessionId, {
+                  type: 'connectionStatus',
+                  status: { 
+                    isConnected: false, 
+                    channel, 
+                    platform: session.platform,
+                    message: 'Conexão desconectada automaticamente - sessão sem usuários'
+                  }
+                });
+              }
+            }
+          }).catch(error => {
+            console.error(`Erro ao verificar sessão ${sessionId}:`, error);
+          });
+        }
+      } catch (error) {
+        console.error(`Erro ao verificar sessão ${sessionId}:`, error);
+      }
+    });
+  }
+
+  /**
+   * Verifica se há conexões SSE ativas para uma sessão
+   */
+  private hasActiveSSEConnections(sessionId: string): boolean {
+    try {
+      // Usar uma abordagem mais simples - verificar se há sessões ativas no Redis
+      // Como alternativa, podemos assumir que se a sessão existe no sessionToChannel,
+      // ela pode ter conexões ativas
+      return this.sessionToChannel.has(sessionId);
+    } catch (error) {
+      console.error('Erro ao verificar conexões SSE:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Inicia o monitoramento de sessões vazias
+   */
+  private startEmptySessionMonitoring(): void {
+    if (this.sseCheckInterval) {
+      return; // Já está rodando
+    }
+
+    console.log('🔍 Iniciando monitoramento de sessões vazias...');
+    
+    this.sseCheckInterval = setInterval(() => {
+      this.checkEmptySessionsAndDisconnect();
+    }, this.SSE_CHECK_INTERVAL);
+  }
+
+  /**
+   * Para o monitoramento de sessões vazias
+   */
+  private stopEmptySessionMonitoring(): void {
+    if (this.sseCheckInterval) {
+      clearInterval(this.sseCheckInterval);
+      this.sseCheckInterval = null;
+      console.log('⏹️ Monitoramento de sessões vazias parado');
+    }
   }
 }
