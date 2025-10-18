@@ -123,25 +123,37 @@ export class YouTubeChatServiceV2 {
    */
   private async processChatMessage(chatItem: unknown): Promise<void> {
     try {
+      // Validar se chatItem é válido
+      if (!chatItem || typeof chatItem !== 'object') {
+        console.warn('⚠️ [YouTube V2] ChatItem inválido recebido:', chatItem);
+        return;
+      }
+
       // Converter formato da biblioteca para nosso formato
       const item = chatItem as Record<string, unknown>;
       
+      // Validar se item tem propriedades necessárias
+      if (!item.author && !item.message) {
+        console.warn('⚠️ [YouTube V2] Item sem autor ou mensagem:', item);
+        return;
+      }
+      
       // Extrair dados do autor
-      const author = item.author as Record<string, unknown> || {};
+      const author = (item.author as Record<string, unknown>) || {};
       const authorName = (author.name as string) || 'Usuário';
       const authorChannelId = (author.channelId as string) || '';
-      const authorThumbnail = author.thumbnail as Record<string, unknown> || {};
+      const authorThumbnail = (author.thumbnail as Record<string, unknown>) || {};
       const profileImageUrl = (authorThumbnail.url as string) || '';
       
       // Extrair badge se existir
-      const badge = author.badge as Record<string, unknown> || {};
+      const badge = (author.badge as Record<string, unknown>) || {};
       const badgeLabel = (badge.label as string) || '';
       
       // Processar mensagem (pode ser array de objetos)
       const messageArray = item.message as unknown[] || [];
       let messageText = '';
       
-      if (Array.isArray(messageArray)) {
+      if (Array.isArray(messageArray) && messageArray.length > 0) {
         messageText = messageArray
           .map(msg => {
             if (typeof msg === 'object' && msg !== null) {
@@ -156,6 +168,15 @@ export class YouTubeChatServiceV2 {
           })
           .filter(text => text.length > 0)
           .join(' ');
+      } else if (typeof item.message === 'string') {
+        // Se a mensagem for uma string simples
+        messageText = item.message as string;
+      }
+      
+      // Validar se temos uma mensagem válida
+      if (!messageText || messageText.trim().length === 0) {
+        console.warn('⚠️ [YouTube V2] Mensagem vazia ignorada:', item);
+        return;
       }
       
       const chatMessage: YouTubeChatMessage = {
@@ -195,18 +216,22 @@ export class YouTubeChatServiceV2 {
       });
 
       // Processar primeira palavra da mensagem para o contador
-      const firstWord = this.extractFirstWord(chatMessage.messageText);
-      if (firstWord) {
-        await this.sessionManager.processWord(this.sessionId, firstWord);
-        
-        // Enviar atualização de palavras
-        const stats = await this.sessionManager.getSessionStats(this.sessionId);
-        if (stats) {
-          broadcastToSharedSession(this.sessionId, {
-            type: 'wordUpdate',
-            stats: stats
-          });
+      try {
+        const firstWord = this.extractFirstWord(chatMessage.messageText);
+        if (firstWord) {
+          await this.sessionManager.processWord(this.sessionId, firstWord);
+          
+          // Enviar atualização de palavras
+          const stats = await this.sessionManager.getSessionStats(this.sessionId);
+          if (stats) {
+            broadcastToSharedSession(this.sessionId, {
+              type: 'wordUpdate',
+              stats: stats
+            });
+          }
         }
+      } catch (wordError) {
+        console.error('❌ [YouTube V2] Erro ao processar palavra:', wordError);
       }
     } catch (error) {
       console.error('❌ [YouTube V2] Erro ao processar mensagem:', error);

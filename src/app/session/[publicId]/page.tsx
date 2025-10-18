@@ -297,89 +297,148 @@ function SessionPageContent({ params }: SessionPageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
-      {/* Header */}
-      <div className="glass border-b border-white border-opacity-20 px-4 sm:px-6 py-4">
-        <div className="max-w-7xl mx-auto">
-          {/* Mobile Layout */}
-          <div className="block sm:hidden">
-            <div className="flex items-center justify-between mb-3">
-              {renderConnectionStatus()}
-            </div>
-            <h1 className="text-lg font-bold mb-2">
-              WordStream - {sessionData?.channel}
-            </h1>
-            <div className="glass rounded-lg px-2 py-1 mb-3">
-              <span className="text-xs text-gray-300">
-                Sessão: <span className="font-mono text-blue-400">{publicId}</span>
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={clearMessages}
-                className="px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs transition-colors"
-              >
-                Limpar Chat
-              </button>
-              <button
-                onClick={clearCounter}
-                className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs transition-colors"
-              >
-                Limpar Contador
-              </button>
-              <button
-                onClick={() => setShowSettings(true)}
-                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs transition-colors"
-              >
-                ⚙️
-              </button>
-              <button
-                onClick={() => setShowObsModal(true)}
-                className="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs transition-colors"
-              >
-                🎬 OBS
-              </button>
-            </div>
-          </div>
-          
-          {/* Desktop Layout */}
-          <div className="hidden sm:flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              {renderConnectionStatus()}
-              <h1 className="text-xl font-bold">
-                WordStream - {sessionData?.channel}
-              </h1>
-              <div className="glass rounded-lg px-3 py-1">
-                <span className="text-sm text-gray-300">
-                  Sessão: <span className="font-mono text-blue-400">{publicId}</span>
-                </span>
+      {/* Header Moderno */}
+      <div className="relative overflow-hidden">
+        {/* Background com efeito de partículas */}
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-blue-600/20 to-purple-600/20"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]"></div>
+        
+        <div className="relative backdrop-blur-sm border-b border-white/10 px-4 sm:px-6 py-6">
+          <div className="max-w-7xl mx-auto">
+            {/* Mobile Layout */}
+            <div className="block sm:hidden space-y-4">
+              {/* Status e Título */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <span className="text-white font-bold text-lg">W</span>
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold text-white">
+                      WordStream
+                    </h1>
+                    <p className="text-sm text-gray-300">
+                      {sessionData?.channel}
+                    </p>
+                  </div>
+                </div>
+                {renderConnectionStatus()}
+              </div>
+              
+              {/* Session ID Card */}
+              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                    <span className="text-xs text-gray-300">Sessão Ativa</span>
+                  </div>
+                  <span className="font-mono text-xs text-blue-400 bg-blue-500/10 px-2 py-1 rounded">
+                    {publicId}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={restartConnections}
+                  disabled={sseLoading}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-green-600/50 hover:bg-green-600 disabled:bg-gray-600/50 rounded-lg text-xs transition-all duration-200 hover:scale-105"
+                >
+                  <span>{sseLoading ? '⏳' : '🔄'}</span>
+                  <span>Reiniciar</span>
+                </button>
+                <button
+                  onClick={clearMessages}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-gray-600/50 hover:bg-gray-600 rounded-lg text-xs transition-all duration-200 hover:scale-105"
+                >
+                  <span>🗑️</span>
+                  <span>Limpar Chat</span>
+                </button>
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-blue-600/50 hover:bg-blue-600 rounded-lg text-xs transition-all duration-200 hover:scale-105"
+                >
+                  <span>⚙️</span>
+                  <span>Configurações</span>
+                </button>
+                <button
+                  onClick={() => setShowObsModal(true)}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 bg-purple-600/50 hover:bg-purple-600 rounded-lg text-xs transition-all duration-200 hover:scale-105"
+                >
+                  <span>🎬</span>
+                  <span>OBS Overlays</span>
+                </button>
               </div>
             </div>
             
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={clearMessages}
-                className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm transition-colors"
-              >
-                Limpar Chat
-              </button>
-              <button
-                onClick={clearCounter}
-                className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm transition-colors"
-              >
-                Limpar Contador
-              </button>
-              <button
-                onClick={() => setShowSettings(true)}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
-              >
-                ⚙️ Configurações
-              </button>
-              <button
-                onClick={() => setShowObsModal(true)}
-                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded text-sm transition-colors"
-              >
-                🎬 Overlays OBS
-              </button>
+            {/* Desktop Layout */}
+            <div className="hidden sm:flex items-center justify-between">
+              <div className="flex items-center space-x-6">
+                {/* Logo e Título */}
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <span className="text-white font-bold text-xl">W</span>
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-white">
+                      WordStream
+                    </h1>
+                    <p className="text-sm text-gray-300">
+                      Canal: <span className="text-blue-400 font-semibold">{sessionData?.channel}</span>
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Session Info */}
+                <div className="bg-white/5 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/10">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                      <span className="text-sm text-gray-300">Sessão:</span>
+                    </div>
+                    <span className="font-mono text-sm text-blue-400 bg-blue-500/10 px-2 py-1 rounded">
+                      {publicId}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Connection Status */}
+                {renderConnectionStatus()}
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={restartConnections}
+                  disabled={sseLoading}
+                  className="flex items-center space-x-2 px-4 py-2 bg-green-600/50 hover:bg-green-600 disabled:bg-gray-600/50 rounded-lg text-sm transition-all duration-200 hover:scale-105"
+                >
+                  <span>{sseLoading ? '⏳' : '🔄'}</span>
+                  <span>Reiniciar</span>
+                </button>
+                <button
+                  onClick={clearMessages}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gray-600/50 hover:bg-gray-600 rounded-lg text-sm transition-all duration-200 hover:scale-105"
+                >
+                  <span>🗑️</span>
+                  <span>Limpar Chat</span>
+                </button>
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600/50 hover:bg-blue-600 rounded-lg text-sm transition-all duration-200 hover:scale-105"
+                >
+                  <span>⚙️</span>
+                  <span>Configurações</span>
+                </button>
+                <button
+                  onClick={() => setShowObsModal(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-purple-600/50 hover:bg-purple-600 rounded-lg text-sm transition-all duration-200 hover:scale-105"
+                >
+                  <span>🎬</span>
+                  <span>OBS Overlays</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -515,6 +574,13 @@ function SessionPageContent({ params }: SessionPageProps) {
                     Contador de Palavras
                   </h3>
                 </div>
+                <button
+                  onClick={clearCounter}
+                  className="flex items-center justify-center px-2 py-1 bg-red-600/50 hover:bg-red-600 rounded-lg text-xs transition-all duration-200 hover:scale-105"
+                  title="Limpar Contador"
+                >
+                  <span>Limpar</span>
+                </button>
               </div>
 
               {/* Stats */}
@@ -667,6 +733,13 @@ function SessionPageContent({ params }: SessionPageProps) {
                     Contador de Palavras
                   </h3>
                 </div>
+                <button
+                  onClick={clearCounter}
+                  className="flex items-center justify-center px-2 py-1 bg-red-600/50 hover:bg-red-600 rounded-lg text-xs transition-all duration-200 hover:scale-105"
+                  title="Limpar Contador"
+                >
+                  <span>Limpar</span>
+                </button>
               </div>
 
               {/* Stats */}
